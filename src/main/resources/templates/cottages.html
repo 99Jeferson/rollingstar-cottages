@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" 
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <title>Rolling Star | Cottages Configuration</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        
+        body {
+            background-color: #0b0f19;
+            color: #f1f5f9;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Sidebar Navigation */
+        .sidebar {
+            width: 260px;
+            background-color: #111827;
+            border-right: 2px solid #8b5cf6;
+            display: flex;
+            flex-direction: column;
+            padding: 24px;
+        }
+
+        .sidebar-brand { margin-bottom: 35px; }
+        .sidebar-brand h2 { color: #f59e0b; font-size: 22px; font-weight: 700; text-shadow: 0 0 8px rgba(245, 158, 11, 0.3); }
+        .sidebar-brand p { color: #a78bfa; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
+
+        .nav-menu { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+        .nav-item a { display: block; padding: 12px 16px; color: #9ca3af; text-decoration: none; border-radius: 8px; font-weight: 600; transition: all 0.2s; }
+        .nav-item.active a, .nav-item a:hover { background: rgba(139, 92, 246, 0.15); color: #8b5cf6; border-left: 4px solid #f59e0b; }
+        .nav-logout { margin-top: auto; }
+        .nav-logout a { color: #ef4444; }
+
+        /* Main Workspace */
+        .main-workspace { flex: 1; display: flex; flex-direction: column; overflow-y: auto; }
+        
+        .top-navbar {
+            background-color: #111827;
+            padding: 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #1f2937;
+        }
+        .navbar-title h1 { font-size: 24px; color: #f59e0b; font-weight: 700; }
+
+        .user-profile {
+            background: #1f2937;
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: 1px solid #374151;
+            font-size: 14px;
+            font-weight: 600;
+            color: #a78bfa;
+        }
+
+        .dashboard-view { padding: 40px; display: flex; flex-direction: column; gap: 30px; }
+
+        /* Modern Interactive Grid Layout */
+        .cottage-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 25px;
+        }
+
+        /* Glassmorphism Card Style with Hover Effects */
+        .cottage-card {
+            background: linear-gradient(145deg, #1f2937, #111827);
+            border: 1px solid #374151;
+            border-radius: 16px;
+            padding: 24px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .cottage-card:hover {
+            transform: translateY(-5px);
+            border-color: #8b5cf6;
+            box-shadow: 0 15px 30px rgba(139, 92, 246, 0.2);
+        }
+
+        /* Status Visual Indicators */
+        .status-glow { position: absolute; top: 0; left: 0; width: 100%; height: 5px; }
+        .status-glow-AVAILABLE, .status-glow-available { background: #10b981; box-shadow: 0 2px 10px #10b981; }
+        .status-glow-OCCUPIED, .status-glow-occupied { background: #f59e0b; box-shadow: 0 2px 10px #f59e0b; }
+        .status-glow-MAINTENANCE, .status-glow-maintenance { background: #ef4444; box-shadow: 0 2px 10px #ef4444; }
+
+        .card-meta { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; }
+        .room-code { font-size: 22px; font-weight: 800; color: #fff; }
+        
+        .status-badge { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 800; text-transform: uppercase; }
+        .status-badge-AVAILABLE, .status-badge-available { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+        .status-badge-OCCUPIED, .status-badge-occupied { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+        .status-badge-MAINTENANCE, .status-badge-maintenance { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+
+        .room-type { font-size: 14px; color: #9ca3af; margin-bottom: 20px; font-weight: 500; }
+        
+        .price-tag { font-size: 18px; font-weight: 700; color: #a78bfa; margin-bottom: 15px; }
+        .guest-info { font-size: 13px; color: #cbd5e1; background: rgba(255,255,255,0.05); padding: 8px 12px; border-radius: 8px; border-left: 3px solid #f59e0b; margin-bottom: 15px; }
+
+        /* Action Buttons */
+        .card-actions { display: flex; gap: 10px; margin-top: auto; }
+        .btn-card { flex: 1; padding: 10px; border: none; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.2s; text-align: center; text-decoration: none;}
+        .btn-card.primary { background: #8b5cf6; color: #fff; }
+        .btn-card.primary:hover { background: #7c3aed; }
+        .btn-card.secondary { background: #374151; color: #d1d5db; }
+        .btn-card.secondary:hover { background: #4b5563; }
+
+        .btn-add { background: #f59e0b; color: #0b0f19; font-weight: 700; padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px; }
+        .btn-add:hover { background: #d97706; box-shadow: 0 0 15px rgba(245, 158, 11, 0.4); }
+    </style>
+</head>
+<body>
+
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <h2>Rolling Star</h2>
+            <p>Cottages &amp; Lounge</p>
+        </div>
+        <ul class="nav-menu">
+            <li class="nav-item"><a th:href="@{/dashboard}">Dashboard Overview</a></li>
+            <li class="nav-item active"><a th:href="@{/cottages}">Cottages Configuration</a></li>
+            <li class="nav-item"><a th:href="@{/billing}">Billing &amp; Invoices</a></li>
+            <li class="nav-item"><a href="#">Inventory Tracker</a></li>
+            <li class="nav-item"><a href="#">Staffing Management</a></li>
+            
+            <li class="nav-item" sec:authorize="hasAnyAuthority('ROLE_BOSS', 'BOSS')">
+                <a th:href="@{/auditing}" style="border-left: 4px dashed #ef4444; color: #f87171;">🛡️ Security Audits</a>
+            </li>
+            
+            <li class="nav-item nav-logout"><a th:href="@{/logout}">System Logout</a></li>
+        </ul>
+    </aside>
+
+    <main class="main-workspace">
+        <header class="top-navbar">
+            <div class="navbar-title">
+                <h1>Cottages Configuration</h1>
+            </div>
+            
+            <div style="display: flex; align-items: center; gap: 20px;">
+                <div class="user-profile">
+                    <span>Active Session: <strong sec:authentication="name">User</strong></span>
+                </div>
+                <button class="btn-add" onclick="alert('Launch Add Cottage Configuration Workflow')">
+                    ✨ Add New Cottage
+                </button>
+            </div>
+        </header>
+
+        <section class="dashboard-view">
+            <div class="cottage-grid">
+                
+                <div class="cottage-card" th:each="room : ${cottages}">
+                    <div th:class="|status-glow status-glow-${room.status}|"></div>
+                    
+                    <div class="card-meta">
+                        <span class="room-code" th:text="${room.code}">CT-00</span>
+                        <span th:class="|status-badge status-badge-${room.status}|" th:text="${room.status}">Status</span>
+                    </div>
+                    
+                    <div class="room-type" th:text="${room.type}">Room Type Specification</div>
+                    <div class="price-tag" th:text="|UGX ${room.rate} / Night|">UGX 0 / Night</div>
+                    
+                    <div class="guest-info" th:if="${room.guest != null}">
+                        👤 Current Occupant: <strong th:text="${room.guest}">Guest Name</strong>
+                    </div>
+
+                    <div class="card-actions">
+                        <button class="btn-card primary" 
+                                th:data-code="${room.code}" 
+                                onclick="alert('Editing settings for ' + this.getAttribute('data-code'))">
+                            Manage Room
+                        </button>
+                        <button class="btn-card secondary" 
+                                th:data-code="${room.code}" 
+                                onclick="alert('Updating logs for ' + this.getAttribute('data-code'))">
+                            Log Status
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+    </main>
+
+</body>
+</html>

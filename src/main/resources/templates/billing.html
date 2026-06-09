@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" 
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <title>Rolling Star | Billing Engine</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        
+        body {
+            background-color: #0b0f19;
+            color: #f1f5f9;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Sidebar Navigation */
+        .sidebar {
+            width: 260px;
+            background-color: #111827;
+            border-right: 2px solid #8b5cf6;
+            display: flex;
+            flex-direction: column;
+            padding: 24px;
+        }
+
+        .sidebar-brand {
+            margin-bottom: 35px;
+        }
+
+        .sidebar-brand h2 {
+            color: #f59e0b;
+            font-size: 22px;
+            font-weight: 700;
+            text-shadow: 0 0 8px rgba(245, 158, 11, 0.3);
+        }
+
+        .sidebar-brand p {
+            color: #a78bfa;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 2px;
+        }
+
+        .nav-menu {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .nav-item a {
+            display: block;
+            padding: 12px 16px;
+            color: #9ca3af;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .nav-item.active a, .nav-item a:hover {
+            background: rgba(139, 92, 246, 0.15);
+            color: #8b5cf6;
+            border-left: 4px solid #f59e0b;
+        }
+
+        .nav-logout {
+            margin-top: auto;
+        }
+
+        .nav-logout a {
+            color: #ef4444;
+        }
+        .nav-logout a:hover {
+            background-color: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            border-left: 4px solid #ef4444;
+        }
+
+        /* Main Workspace Framework */
+        .main-workspace {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        /* Top Header Navbar */
+        .top-navbar {
+            background-color: #111827;
+            padding: 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #1f2937;
+        }
+
+        .navbar-title h1 {
+            font-size: 24px;
+            color: #f59e0b;
+            font-weight: 700;
+        }
+
+        .user-profile {
+            background: #1f2937;
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: 1px solid #374151;
+            font-size: 14px;
+            font-weight: 600;
+            color: #a78bfa;
+        }
+
+        /* View Container */
+        .dashboard-view {
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        /* Analytics Cards Grid Layout */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+        }
+
+        .metric-card {
+            background-color: #1f2937;
+            padding: 24px;
+            border-radius: 14px;
+            border: 1px solid #374151;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+
+        .metric-title {
+            color: #9ca3af;
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .metric-value {
+            font-size: 26px;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .metric-card.accent-gold .metric-value { color: #f59e0b; }
+        .metric-card.accent-purple .metric-value { color: #a78bfa; }
+
+        /* Data Workspace Cards */
+        .content-card {
+            background-color: #1f2937;
+            border-radius: 14px;
+            border: 1px solid #374151;
+            padding: 24px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+
+        .card-header {
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-header h3 {
+            font-size: 18px;
+            font-weight: 700;
+            color: #f1f5f9;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 15px;
+        }
+
+        .data-table th {
+            padding: 14px 16px;
+            color: #9ca3af;
+            font-weight: 600;
+            border-bottom: 2px solid #374151;
+        }
+
+        .data-table td {
+            padding: 14px 16px;
+            color: #d1d5db;
+            border-bottom: 1px solid #1f2937;
+            vertical-align: middle;
+        }
+
+        .data-table tr:hover td {
+            background-color: rgba(255, 255, 255, 0.01);
+        }
+
+        /* Forms and Controls */
+        .form-inline {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .input-dark {
+            background-color: #111827;
+            border: 1px solid #374151;
+            color: #fff;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            transition: border 0.2s;
+        }
+
+        .input-dark:focus {
+            border-color: #8b5cf6;
+        }
+
+        .btn-gold {
+            background-color: #f59e0b;
+            color: #0b0f19;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-gold:hover {
+            background-color: #d97706;
+            box-shadow: 0 0 12px rgba(245, 158, 11, 0.4);
+        }
+
+        .btn-action {
+            background-color: rgba(16, 185, 129, 0.15);
+            color: #10b981;
+            border: 1px solid #10b981;
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 13px;
+            cursor: pointer;
+            text-transform: uppercase;
+        }
+
+        .btn-action:hover {
+            background-color: #10b981;
+            color: #fff;
+        }
+
+        .btn-print {
+            background-color: #8b5cf6;
+            color: #fff;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-print:hover {
+            background-color: #7c3aed;
+            box-shadow: 0 0 12px rgba(139, 92, 246, 0.4);
+        }
+
+        /* Bulletproof Target-Driven Print Engine System Rules */
+        @media print {
+            /* 1. Force conceal everything without destroying DOM geometries */
+            body * {
+                visibility: hidden !important;
+            }
+            
+            /* 2. Re-verify visibility context exclusively for our targeted identifier data layout */
+            #printable-ledger-area, #printable-ledger-area * {
+                visibility: visible !important;
+            }
+            
+            /* 3. Re-anchor the printable area component box back to top-left boundary */
+            #printable-ledger-area {
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 100% !important;
+                background-color: #ffffff !important;
+                color: #000000 !important;
+            }
+
+            /* 4. Force hard contrast colors for receipt printing outputs */
+            .data-table {
+                width: 100% !important;
+                border-collapse: collapse !important;
+                background: #ffffff !important;
+                color: #000000 !important;
+            }
+
+            .data-table th {
+                color: #000000 !important;
+                background-color: #f3f4f6 !important;
+                border-bottom: 2px solid #000000 !important;
+                padding: 10px !important;
+            }
+
+            .data-table td {
+                color: #000000 !important;
+                border-bottom: 1px solid #cccccc !important;
+                padding: 10px !important;
+                background: transparent !important;
+            }
+
+            code {
+                color: #000000 !important;
+                font-family: monospace !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <h2>Rolling Star</h2>
+            <p>Cottages &amp; Lounge</p>
+        </div>
+        <ul class="nav-menu">
+            <li class="nav-item"><a th:href="@{/dashboard}">Dashboard Overview</a></li>
+            <li class="nav-item"><a href="#">Cottages Configuration</a></li>
+            <li class="nav-item active"><a th:href="@{/billing}">Billing &amp; Invoices</a></li>
+            <li class="nav-item"><a href="#">Inventory Tracker</a></li>
+            <li class="nav-item"><a href="#">Staffing Management</a></li>
+            
+            <li class="nav-item" sec:authorize="hasRole('BOSS')">
+                <a th:href="@{/auditing}" style="border-left: 4px dashed #ef4444; color: #f87171;">🛡️ Security Audits</a>
+            </li>
+            
+            <li class="nav-item nav-logout"><a th:href="@{/logout}">System Logout</a></li>
+        </ul>
+    </aside>
+
+    <main class="main-workspace">
+        
+        <header class="top-navbar">
+            <div class="navbar-title">
+                <h1>Billing Engine</h1>
+            </div>
+            <div class="user-profile">
+                <span>Active Session: <strong sec:authentication="name">User</strong></span>
+                <span style="font-size: 11px; color: #9ca3af; margin-left: 5px;" 
+                      sec:authentication="principal.authorities">[Role]</span>
+            </div>
+        </header>
+
+        <section class="dashboard-view">
+            
+            <div class="metrics-grid">
+                <div class="metric-card accent-gold">
+                    <span class="metric-title">Total Settled Sales</span>
+                    <span class="metric-value" th:text="'UGX ' + ${#numbers.formatDecimal(totalSales, 1, 'COMMA', 2, 'POINT')}">UGX 0.00</span>
+                </div>
+                <div class="metric-card">
+                    <span class="metric-title">Bills Settled Today</span>
+                    <span class="metric-value" style="color: #10b981;" th:text="${billsSettledCount}">0</span>
+                </div>
+                <div class="metric-card accent-purple">
+                    <span class="metric-title">Average Order Ticket</span>
+                    <span class="metric-value" th:text="'UGX ' + ${#numbers.formatDecimal(averageSales, 1, 'COMMA', 2, 'POINT')}">UGX 0.00</span>
+                </div>
+            </div>
+
+            <div class="content-card">
+                <div class="card-header">
+                    <h3>Active Operations &amp; Open Tabs</h3>
+                    <form th:action="@{/billing/open-tab}" method="POST" class="form-inline">
+                        <input type="text" name="tabName" class="input-dark" placeholder="Customer / Table Name" required />
+                        <button type="submit" class="btn-gold">Open New Tab</button>
+                    </form>
+                </div>
+                
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Tab/Table Reference</th>
+                            <th>Current Invoice Status</th>
+                            <th>Outstanding Balance</th>
+                            <th>Add Stock Items</th>
+                            <th>Terminal Settlement</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="tab : ${activeTabs}">
+                            <td><strong th:text="${tab.tabName}">Table reference</strong></td>
+                            <td><span style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight:700;">OPEN</span></td>
+                            <td th:text="'UGX ' + ${#numbers.formatDecimal(tab.totalAmount, 1, 'COMMA', 2, 'POINT')}">UGX 0.00</td>
+                            
+                            <td>
+                                <form th:action="@{/billing/add-item}" method="POST" class="form-inline">
+                                    <input type="hidden" name="tabId" th:value="${tab.id}" />
+                                    <select name="itemId" class="input-dark" style="padding: 6px 12px;" required>
+                                        <option value="" disabled selected>Select Menu Item</option>
+                                        <option th:each="item : ${menuItems}" th:value="${item.id}" th:text="${item.name} + ' (' + ${item.price} + ')'"></option>
+                                    </select>
+                                    <input type="number" name="quantity" class="input-dark" value="1" min="1" style="width: 70px; padding: 6px 10px;" required />
+                                    <button type="submit" class="btn-gold" style="padding: 6px 12px; font-size: 13px;">+</button>
+                                </form>
+                            </td>
+                            
+                            <td>
+                                <form th:action="@{/billing/settle-tab}" method="POST" style="margin:0;">
+                                    <input type="hidden" name="tabId" th:value="${tab.id}" />
+                                    <button type="submit" class="btn-action">Settle Bill</button>
+                                </form>
+                            </td>
+                        </tr>
+                        <tr th:if="${#lists.isEmpty(activeTabs)}">
+                            <td colspan="5" style="text-align: center; color: #9ca3af; padding: 30px;">No open workflows found. Open a new tab above.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="content-card" sec:authorize="hasAnyRole('MANAGER', 'BOSS')" id="printable-ledger-area">
+                <div class="card-header">
+                    <h3>Settled Operations History (Audit Ledger)</h3>
+                    <button class="btn-print" onclick="executeIsolatedPrint()">
+                        <span>🖨️</span> Print Audit Log
+                    </button>
+                </div>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Invoice Reference</th>
+                            <th>Status Flag</th>
+                            <th>Final Cleared Total</th>
+                            <th>Authorized By</th>
+                            <th>Clearing Timestamp</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="tab : ${settledTabs}">
+                            <td th:text="${tab.tabName}">Table reference</td>
+                            <td><span style="background: rgba(16, 185, 129, 0.15); color: #10b981; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight:700;">SETTLED</span></td>
+                            <td th:text="'UGX ' + ${#numbers.formatDecimal(tab.totalAmount, 1, 'COMMA', 2, 'POINT')}">UGX 0.00</td>
+                            <td><code style="color: #a78bfa;" th:text="${tab.settledBy != null ? tab.settledBy : 'System'}">User</code></td>
+                            <td th:text="${tab.settledAt != null ? #temporals.format(tab.settledAt, 'yyyy-MM-dd HH:mm:ss') : 'N/A'}">Date-Time</td>
+                        </tr>
+                        <tr th:if="${#lists.isEmpty(settledTabs)}">
+                            <td colspan="5" style="text-align: center; color: #9ca3af; padding: 30px;">No historical settled items in current runtime window.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+        </section>
+    </main>
+
+    <script>
+        function executeIsolatedPrint() {
+            const printButton = document.querySelector('.btn-print');
+            
+            // 1. Strip out the print trigger button object from layout metrics
+            if (printButton) {
+                printButton.style.setProperty('display', 'none', 'important');
+            }
+            
+            // 2. Call the browser subsystem rendering thread
+            window.print();
+            
+            // 3. Reinstate button layout models post hardware transfer pipeline initialization
+            if (printButton) {
+                printButton.style.display = '';
+            }
+        }
+    </script>
+</body>
+</html>
