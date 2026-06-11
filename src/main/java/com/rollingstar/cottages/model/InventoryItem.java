@@ -12,6 +12,19 @@ public class InventoryItem {
     private String name;
     private BigDecimal price;
     private String category;
+    
+ // Inside com.rollingstar.cottages.model.InventoryItem.java
+
+    @Column(name = "stock_quantity", nullable = false)
+    private Integer stockQuantity = 0;
+
+    public Integer getStockQuantity() {
+        return stockQuantity;
+    }
+
+    public void setStockQuantity(Integer stockQuantity) {
+        this.stockQuantity = stockQuantity;
+    }
 
     // Getters and Setters
     public Long getId() { return id; }

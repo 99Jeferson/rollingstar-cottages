@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Rolling Stars | Inventory Tracker</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        /* Modern Obsidian Dark Palette */
+        body {
+            background-color: #0b0f19;
+            color: #f1f5f9;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        /* Top Bar Styling */
+        .custom-navbar {
+            background-color: #111827;
+            border-bottom: 2px solid #8b5cf6;
+            padding: 15px 0;
+        }
+        
+        .brand-gold {
+            color: #f59e0b;
+            font-weight: 700;
+            text-shadow: 0 0 8px rgba(245, 158, 11, 0.2);
+        }
+
+        /* Card Panels Override */
+        .dark-card {
+            background-color: #1f2937;
+            border: 1px solid #374151;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        .dark-card .card-header {
+            border-bottom: 1px solid #374151;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        /* Custom Theme Card Highlights */
+        .card-restock { border-top: 4px solid #8b5cf6; }
+        .card-restock .card-header { background-color: rgba(139, 92, 246, 0.1); color: #a78bfa; }
+        
+        .card-price { border-top: 4px solid #f59e0b; }
+        .card-price .card-header { background-color: rgba(245, 158, 11, 0.1); color: #f59e0b; }
+
+        .card-table-master { border-top: 4px solid #10b981; }
+        .card-table-master .card-header { background-color: rgba(16, 185, 129, 0.1); color: #10b981; }
+
+        /* Dark Form Fields */
+        .form-control, .form-select {
+            background-color: #111827;
+            border: 1px solid #4b5563;
+            color: #fff;
+        }
+        .form-control:focus, .form-select:focus {
+            background-color: #111827;
+            border-color: #8b5cf6;
+            color: #fff;
+            box-shadow: 0 0 0 0.25rem rgba(139, 92, 246, 0.25);
+        }
+        .form-label {
+            color: #9ca3af;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        /* Action Buttons */
+        .btn-purple {
+            background-color: #8b5cf6;
+            color: white;
+            font-weight: 600;
+        }
+        .btn-purple:hover {
+            background-color: #7c3aed;
+            color: white;
+        }
+        .btn-gold {
+            background-color: #f59e0b;
+            color: #111827;
+            font-weight: 600;
+        }
+        .btn-gold:hover {
+            background-color: #d97706;
+            color: #111827;
+        }
+
+        /* Custom Table Styling */
+        .table-dark-custom {
+            color: #d1d5db;
+            margin-bottom: 0;
+        }
+        .table-dark-custom thead th {
+            background-color: #111827;
+            color: #9ca3af;
+            font-weight: 600;
+            border-bottom: 2px solid #374151;
+            padding: 12px 16px;
+        }
+        .table-dark-custom tbody td {
+            background-color: #1f2937;
+            border-bottom: 1px solid #2d3748;
+            padding: 14px 16px;
+        }
+        .table-dark-custom tbody tr:hover td {
+            background-color: rgba(255, 255, 255, 0.02);
+        }
+
+        /* Neon Status Badges */
+        .badge-stock-safe { background: rgba(16, 185, 129, 0.15); color: #10b981; font-weight: 700; }
+        .badge-stock-low { background: rgba(239, 68, 68, 0.15); color: #ef4444; font-weight: 700; }
+        .badge-manager { background: #374151; color: #e5e7eb; border: 1px solid #4b5563; }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar custom-navbar sticky-top mb-4">
+        <div class="container">
+            <span class="navbar-brand mb-0 h1 brand-gold"> Rolling Stars Bar &amp; Lounge</span>
+            <a th:href="@{/dashboard}" class="btn btn-outline-light btn-sm px-3" style="border-radius: 20px;">
+                ← Back to Dashboard
+            </a>
+        </div>
+    </nav>
+
+    <div class="container mb-5">
+        <div class="row mb-4">
+            <div class="col">
+                <h2 style="font-weight: 700; color: #fff;"> Master Inventory Tracker</h2>
+                <p style="color: #9ca3af;">Monitor stock capacity, manage supplier price changes, and audit entry logs.</p>
+            </div>
+        </div>
+
+        <div class="row g-4 mb-5">
+            <div class="col-md-6">
+                <div class="card dark-card card-restock h-100">
+                    <div class="card-header">
+                        <h5 class="mb-0"> Load / Restock Items</h5>
+                    </div>
+                    <div class="card-body">
+                        <form th:action="@{/inventory/restock}" method="post">
+                            <div class="mb-3">
+                                <label class="form-label">Select Item</label>
+                                <select name="itemId" class="form-select" required>
+                                    <option value="" style="color: #9ca3af;">-- Choose Stock Item --</option>
+                                    <option th:each="item : ${inventoryItems}" th:value="${item.id}" th:text="${item.name}" style="background-color: #1f2937;"></option>
+                                </select>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-6">
+                                    <label class="form-label">Quantity Added</label>
+                                    <input type="number" name="quantity" class="form-control" min="1" placeholder="e.g. 24" required>
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label">Unit Cost (UGX)</label>
+                                    <input type="number" name="costPrice" class="form-control" placeholder="e.g. 4500" required>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-purple w-100 py-2 mt-2">Process Entry</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card dark-card card-price h-100">
+                    <div class="card-header">
+                        <h5 class="mb-0"> Change Retail Selling Price</h5>
+                    </div>
+                    <div class="card-body">
+                        <form th:action="@{/inventory/update-price}" method="post">
+                            <div class="mb-3">
+                                <label class="form-label">Select Target Item</label>
+                                <select name="itemId" class="form-select" required>
+                                    <option value="" style="color: #9ca3af;">-- Choose Stock Item --</option>
+                                    <option th:each="item : ${inventoryItems}" th:value="${item.id}" th:text="${item.name} + ' (Current UGX: ' + ${item.price} + ')'" style="background-color: #1f2937;"></option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">New Menu Selling Price (UGX)</label>
+                                <input type="number" name="newPrice" class="form-control" placeholder="e.g. 6000" required>
+                            </div>
+                            <button type="submit" class="btn btn-gold w-100 py-2 mt-2">Update Selling Price</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card dark-card card-table-master mb-5">
+            <div class="card-header">
+                <h5 class="mb-0">📊 Current Real-Time Store Stock Levels</h5>
+            </div>
+            <div class="table-responsive" style="border-radius: 0 0 12px 12px; overflow: hidden;">
+                <table class="table table-dark-custom align-middle">
+                    <thead>
+                        <tr>
+                            <th style="width: 80px;">ID</th>
+                            <th>Item Name</th>
+                            <th>Category</th>
+                            <th class="text-end">Selling Price (UGX)</th>
+                            <th class="text-center" style="width: 180px;">Live Stock Remainder</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="item : ${inventoryItems}">
+                            <td th:text="${item.id}" style="color: #9ca3af;">1</td>
+                            <td class="fw-bold text-white" th:text="${item.name}">Item Name</td>
+                            <td><span class="badge bg-dark text-light border border-secondary" th:text="${item.category}">Category</span></td>
+                            <td class="text-end fw-bold" style="color: #f59e0b;" th:text="${#numbers.formatInteger(item.price, 0, 'COMMA')}">0</td>
+                            <td class="text-center">
+                                <span th:class="${item.stockQuantity <= 5} ? 'badge badge-stock-low fs-6 px-3' : 'badge badge-stock-safe fs-6 px-3'"
+                                      th:text="${item.stockQuantity != null ? item.stockQuantity : 0}">
+                                    0
+                                </span>
+                            </td>
+                        </tr>
+                        <tr th:if="${#lists.isEmpty(inventoryItems)}">
+                            <td colspan="5" class="text-center text-muted py-5">No master inventory catalog details discovered.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card dark-card" style="border-top: 4px solid #6b7280;">
+            <div class="card-header text-secondary-light" style="color: #e5e7eb;">
+                <h5 class="mb-0">📜 Historical Restock Audit Ledger</h5>
+            </div>
+            <div class="table-responsive" style="border-radius: 0 0 12px 12px; overflow: hidden;">
+                <table class="table table-dark-custom table-sm align-middle">
+                    <thead>
+                        <tr>
+                            <th class="py-3 px-3">Timestamp</th>
+                            <th class="py-3">Item Name</th>
+                            <th class="text-center py-3">Quantity Loaded</th>
+                            <th class="text-end py-3">Supply Unit Cost (UGX)</th>
+                            <th class="py-3 ps-4">Processed By Manager</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="log : ${restockHistory}">
+                            <td class="px-3" style="color: #9ca3af; font-size: 14px;" th:text="${log.restockedAt}">Timestamp</td>
+                            <td class="fw-bold text-light" th:text="${log.item.name}">Item Name</td>
+                            <td class="text-center fw-bold" style="color: #a78bfa;" th:text="'+' + ${log.quantityAdded}">+0</td>
+                            <td class="text-end" style="color: #cbd5e1;" th:text="${#numbers.formatInteger(log.costPrice, 0, 'COMMA')}">0</td>
+                            <td class="ps-4">
+                                <span class="badge badge-manager">🛡️ <span th:text="${log.restockedBy}">Manager</span></span>
+                            </td>
+                        </tr>
+                        <tr th:if="${#lists.isEmpty(restockHistory)}">
+                            <td colspan="5" class="text-center text-muted py-4">No restock events recorded in the ledger yet.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

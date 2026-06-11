@@ -234,8 +234,8 @@
             
             <li class="nav-item"><a th:href="@{/billing}">Billing &amp; Invoices</a></li>
             
-            <li class="nav-item"><a href="#">Inventory Tracker</a></li>
-            <li class="nav-item"><a href="#">Staffing Management</a></li>
+            <li class="nav-item"><a th:href="@{/inventory}">Inventory Tracker</a></li>
+            <li class="nav-item"><a th:href="@{/staffing}">Staffing Management</a></li>
             
             <li class="nav-item" sec:authorize="hasRole('BOSS')">
                 <a th:href="@{/auditing}" style="border-left: 4px dashed #ef4444; color: #f87171;">🛡️ Security Audits</a>
