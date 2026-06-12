@@ -4,8 +4,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
-import com.rollingstar.cottages.model.*;
-import com.rollingstar.cottages.repository.*;
+import com.rollingstar.cottages.model.BillingTab;
+import com.rollingstar.cottages.model.InventoryItem;
+import com.rollingstar.cottages.model.TabItem;
+import com.rollingstar.cottages.repository.BillingRepository;
+import com.rollingstar.cottages.repository.InventoryItemRepository;
+import com.rollingstar.cottages.repository.TabItemRepository;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -17,9 +21,14 @@ import org.springframework.security.core.Authentication;
 @RequestMapping("/billing")
 public class BillingController {
 
-    @Autowired private BillingTabRepository tabRepository;
-    @Autowired private InventoryItemRepository itemRepository;
-    @Autowired private TabItemRepository tabItemRepository;
+    @Autowired 
+    private BillingRepository tabRepository; 
+    
+    @Autowired 
+    private InventoryItemRepository itemRepository;
+    
+    @Autowired 
+    private TabItemRepository tabItemRepository;
 
     @GetMapping
     public String showBillingSystem(Model model) {
@@ -52,6 +61,8 @@ public class BillingController {
             newTab.setTabName(tabName);
             newTab.setStatus("OPEN");
             newTab.setTotalAmount(BigDecimal.ZERO);
+            newTab.setReferenceId("REF-" + System.currentTimeMillis());
+            newTab.setDepartmentSource("Main Lounge Area");
             tabRepository.save(newTab);
         }
         return "redirect:/billing";
@@ -59,27 +70,20 @@ public class BillingController {
 
     @PostMapping("/settle-tab")
     public String settleTab(@RequestParam Long tabId, Authentication authentication) {
-        // 1. Find the tab in the database by its ID
         BillingTab tab = tabRepository.findById(tabId).orElse(null);
         
-        // 2. If the tab exists, update it
         if (tab != null && authentication != null) {
             tab.setStatus("SETTLED");
-            
-            // 3. Set the user who clicked the button (from Spring Security)
             tab.setSettledBy(authentication.getName()); 
             tab.setSettledAt(LocalDateTime.now());
-            
-            // 4. Save the changes to the database
             tabRepository.save(tab);
         }
-        
-        // 5. Refresh the page so the tab moves from "Active" to "Settled"
         return "redirect:/billing";
     }
+
     @GetMapping("/login")
     public String loginPage() {
-        return "login"; // This looks for login.html in src/main/resources/templates/
+        return "login"; 
     }
 
     @PostMapping("/add-item")
@@ -97,13 +101,11 @@ public class BillingController {
             TabItem orderLine = tabItemRepository.findByBillingTabAndItemId(tab, itemId);
 
             if (orderLine != null) {
-                // Update existing line
                 int newQuantity = orderLine.getQuantity() + quantity;
                 orderLine.setQuantity(newQuantity);
                 orderLine.setSubtotal(price.multiply(BigDecimal.valueOf(newQuantity)));
                 tabItemRepository.save(orderLine);
             } else {
-                // Create new line
                 orderLine = new TabItem();
                 orderLine.setBillingTab(tab);
                 orderLine.setItemId(menuItem.getId());
@@ -114,12 +116,10 @@ public class BillingController {
                 tabItemRepository.save(orderLine);
             }
 
-            // CRITICAL: Update the parent Tab's total amount
             BigDecimal currentTotal = (tab.getTotalAmount() == null) ? BigDecimal.ZERO : tab.getTotalAmount();
             tab.setTotalAmount(currentTotal.add(addedSubtotal));
-            tabRepository.save(tab); // This saves the updated total to the billing_tabs table
+            tabRepository.save(tab); 
         }
-        
         return "redirect:/billing";
     }
 }

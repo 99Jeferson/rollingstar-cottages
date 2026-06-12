@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <title>Rolling Stars | Staffing Management</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        /* Modern Obsidian Dark Palette */
+        body {
+            background-color: #0b0f19;
+            color: #f1f5f9;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        /* Header Navbar Profile */
+        .custom-navbar {
+            background-color: #111827;
+            border-bottom: 2px solid #8b5cf6;
+            padding: 15px 0;
+        }
+        
+        .brand-gold {
+            color: #f59e0b;
+            font-weight: 700;
+            text-shadow: 0 0 8px rgba(245, 158, 11, 0.2);
+        }
+
+        /* Container & Cards Management Blueprint */
+        .dark-card {
+            background-color: #1f2937;
+            border: 1px solid #374151;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        .dark-card .card-header {
+            border-bottom: 1px solid #374151;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        .card-onboard { border-top: 4px solid #8b5cf6; }
+        .card-onboard .card-header { background-color: rgba(139, 92, 246, 0.1); color: #a78bfa; }
+
+        .card-roster { border-top: 4px solid #10b981; }
+        .card-roster .card-header { background-color: rgba(16, 185, 129, 0.1); color: #10b981; }
+
+        /* Form Inputs Style Override */
+        .form-control, .form-select {
+            background-color: #111827;
+            border: 1px solid #4b5563;
+            color: #fff;
+        }
+        .form-control:focus, .form-select:focus {
+            background-color: #111827;
+            border-color: #8b5cf6;
+            color: #fff;
+            box-shadow: 0 0 0 0.25rem rgba(139, 92, 246, 0.25);
+        }
+        .form-label {
+            color: #9ca3af;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        /* Specialized Buttons */
+        .btn-purple { background-color: #8b5cf6; color: white; font-weight: 600; }
+        .btn-purple:hover { background-color: #7c3aed; color: white; }
+        .btn-gold { background-color: #f59e0b; color: #111827; font-weight: 600; }
+        .btn-gold:hover { background-color: #d97706; color: #111827; }
+
+        /* Data Roster Tables Customization */
+        .table-dark-custom { color: #d1d5db; margin-bottom: 0; }
+        .table-dark-custom thead th {
+            background-color: #111827;
+            color: #9ca3af;
+            font-weight: 600;
+            border-bottom: 2px solid #374151;
+            padding: 12px 16px;
+        }
+        .table-dark-custom tbody td {
+            background-color: #1f2937;
+            border-bottom: 1px solid #2d3748;
+            padding: 14px 16px;
+        }
+        .table-dark-custom tbody tr:hover td { background-color: rgba(255, 255, 255, 0.02); }
+
+        /* Vibrant Neon Badges for Status Indicators */
+        .badge-active { background: rgba(16, 185, 129, 0.15); color: #10b981; font-weight: 700; }
+        .badge-break { background: rgba(245, 158, 11, 0.15); color: #f59e0b; font-weight: 700; }
+        .badge-terminated { background: rgba(239, 68, 68, 0.15); color: #ef4444; font-weight: 700; }
+        
+        /* Modal Custom Style Fixes */
+        .modal-content {
+            background-color: #1f2937;
+            border: 1px solid #4b5563;
+            color: #fff;
+        }
+        .modal-header { border-bottom: 1px solid #374151; }
+        .modal-footer { border-top: 1px solid #374151; }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar custom-navbar sticky-top mb-4">
+        <div class="container">
+            <span class="navbar-brand mb-0 h1 brand-gold"> Rolling Stars Corporate Control</span>
+            <a th:href="@{/dashboard}" class="btn btn-outline-light btn-sm px-3" style="border-radius: 20px;">
+                ← Back to Dashboard
+            </a>
+        </div>
+    </nav>
+
+    <div class="container mb-5">
+        
+        <div class="row mb-4">
+            <div class="col">
+                <h2 style="font-weight: 700; color: #fff;">🧑‍💼 Staffing &amp; Roster Management</h2>
+                <p style="color: #9ca3af;">Track active personnel deployments, assign application privilege levels, and update roles.</p>
+            </div>
+        </div>
+
+        <div class="card dark-card card-onboard mb-5">
+            <div class="card-header">
+                <h5 class="mb-0"> Onboard New Roster Staff Member</h5>
+            </div>
+            <div class="card-body">
+                <form th:action="@{/staffing/onboard}" th:object="${newStaffForm}" method="post" class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Full Employee Name</label>
+                        <input type="text" th:field="*{fullName}" class="form-control" placeholder="e.g. Brian Omondi" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Operational Work Position</label>
+                        <input type="text" th:field="*{currentPosition}" class="form-control" placeholder="e.g. Head Bartender" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Department / Station Assignment</label>
+                        <select th:field="*{departmentAssignment}" class="form-select" required>
+                            <option value="Main Lounge Area">Main Lounge Area</option>
+                            <option value="Cottage Hospitality Services">Cottage Hospitality Services</option>
+                            <option value="Front Office Operations">Front Office Operations</option>
+                            <option value="Kitchen &amp; Stores Operations">Kitchen &amp; Stores Operations</option>
+                        </select>
+                    </div>
+                    <div class="col-md-12 text-end mt-3">
+                        <button type="submit" class="btn btn-purple px-4 py-2">Add Member to System</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card dark-card card-roster">
+            <div class="card-header">
+                <h5 class="mb-0">📊 Active Roster Deployment Records</h5>
+            </div>
+            <div class="table-responsive" style="border-radius: 0 0 12px 12px; overflow: hidden;">
+                <table class="table table-dark-custom align-middle">
+                    <thead>
+                        <tr>
+                            <th style="width: 80px;">ID</th>
+                            <th>Staff Name</th>
+                            <th>Current Assignment</th>
+                            <th>Department Station</th>
+                            <th class="text-center">System Authority Privilege</th>
+                            <th class="text-center">Status Flag</th>
+                            <th class="text-center" style="width: 150px;">Management Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="staff : ${staffList}">
+                            <td th:text="${staff.id}" style="color: #9ca3af;">1</td>
+                            <td class="fw-bold text-white" th:text="${staff.fullName}">Staff Name</td>
+                            <td th:text="${staff.currentPosition}">Position</td>
+                            <td>
+                                <span class="badge bg-dark text-light border border-secondary" th:text="${staff.departmentAssignment}">Department</span>
+                            </td>
+                            <td class="text-center">
+                                <span class="text-info fw-bold" th:text="${staff.systemUserRole != null ? staff.systemUserRole : 'NONE'}">NONE</span>
+                            </td>
+                            <td class="text-center">
+                                <span th:if="${staff.employmentStatus == 'ACTIVE'}" class="badge badge-active px-3 py-2">ACTIVE</span>
+                                <span th:if="${staff.employmentStatus == 'ON_BREAK'}" class="badge badge-break px-3 py-2">ON BREAK</span>
+                                <span th:if="${staff.employmentStatus == 'TERMINATED' or staff.employmentStatus == 'REPLACED'}" class="badge badge-terminated px-3 py-2">INACTIVE</span>
+                            </td>
+                            <td class="text-center">
+                                <button type="button" class="btn btn-gold btn-sm px-3" 
+                                        data-bs-toggle="modal" 
+                                        th:data-bs-target="'#editModal-' + ${staff.id}">
+                                    Modify Profiling
+                                </button>
+                            </td>
+
+                            <div class="modal fade" th:id="'editModal-' + ${staff.id}" tabindex="-1" aria-hidden="true">
+                                <div class="modal-dialog modal-dialog-centered">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title text-warning">🛠️ Modify Operational Profile: <span th:text="${staff.fullName}"></span></h5>
+                                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <form th:action="@{/staffing/update/{id}(id=${staff.id})}" method="post">
+                                            <div class="modal-body text-start">
+                                                <div class="mb-3">
+                                                    <label class="form-label">Worker's Legal Name (Swap name here if replacing)</label>
+                                                    <input type="text" name="fullName" th:value="${staff.fullName}" class="form-control" required>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label">Job Title / Work Position</label>
+                                                    <input type="text" name="currentPosition" th:value="${staff.currentPosition}" class="form-control" required>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label">Department Assignment Zone</label>
+                                                    <select name="departmentAssignment" class="form-select" required>
+                                                        <option value="Main Lounge Area" th:selected="${staff.departmentAssignment == 'Main Lounge Area'}">Main Lounge Area</option>
+                                                        <option value="Cottage Hospitality Services" th:selected="${staff.departmentAssignment == 'Cottage Hospitality Services'}">Cottage Hospitality Services</option>
+                                                        <option value="Front Office Operations" th:selected="${staff.departmentAssignment == 'Front Office Operations'}">Front Office Operations</option>
+                                                        <option value="Kitchen &amp; Stores Operations" th:selected="${staff.departmentAssignment == 'Kitchen &amp; Stores Operations'}">Kitchen &amp; Stores Operations</option>
+                                                    </select>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label">Employment Status State Flag</label>
+                                                    <select name="employmentStatus" class="form-select" required>
+                                                        <option value="ACTIVE" th:selected="${staff.employmentStatus == 'ACTIVE'}">ACTIVE (On Duty)</option>
+                                                        <option value="ON_BREAK" th:selected="${staff.employmentStatus == 'ON_BREAK'}">ON BREAK (Vacation/Shift End)</option>
+                                                        <option value="TERMINATED" th:selected="${staff.employmentStatus == 'TERMINATED'}">TERMINATED / FIRED</option>
+                                                        <option value="REPLACED" th:selected="${staff.employmentStatus == 'REPLACED'}">REPLACED (Profile Closed)</option>
+                                                    </select>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label">System Application Access Role Assignment</label>
+                                                    <select name="systemUserRole" class="form-select">
+                                                        <option value="NONE" th:selected="${staff.systemUserRole == 'NONE'}">NONE (No System Account Login)</option>
+                                                        <option value="BARTENDER" th:selected="${staff.systemUserRole == 'BARTENDER'}">BARTENDER (Lounge POS Access)</option>
+                                                        <option value="MANAGER" th:selected="${staff.systemUserRole == 'MANAGER'}">MANAGER (Full Roster &amp; Inventory Power)</option>
+                                                        <option value="BOSS" th:selected="${staff.systemUserRole == 'BOSS'}">BOSS (God-mode &amp; Audits Access)</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel Changes</button>
+                                                <button type="submit" class="btn btn-gold">Commit Modification State</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            </tr>
+                        <tr th:if="${#lists.isEmpty(staffList)}">
+                            <td colspan="7" class="text-center text-muted py-5">No corporate deployment configurations uncovered on the active database roster.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
