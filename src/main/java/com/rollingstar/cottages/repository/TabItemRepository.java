@@ -1,4 +1,3 @@
-// Save as TabItemRepository.java
 package com.rollingstar.cottages.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;

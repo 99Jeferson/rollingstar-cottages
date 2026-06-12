@@ -73,6 +73,14 @@ public class BillingController {
         BillingTab tab = tabRepository.findById(tabId).orElse(null);
         
         if (tab != null && authentication != null) {
+            // Anti-Crash Guardrail: Satisfy database non-null constraints on legacy records
+            if (tab.getReferenceId() == null) {
+                tab.setReferenceId("REF-" + System.currentTimeMillis());
+            }
+            if (tab.getDepartmentSource() == null) {
+                tab.setDepartmentSource("Main Lounge Area");
+            }
+
             tab.setStatus("SETTLED");
             tab.setSettledBy(authentication.getName()); 
             tab.setSettledAt(LocalDateTime.now());
@@ -101,7 +109,9 @@ public class BillingController {
             TabItem orderLine = tabItemRepository.findByBillingTabAndItemId(tab, itemId);
 
             if (orderLine != null) {
-                int newQuantity = orderLine.getQuantity() + quantity;
+                int existingQty = (orderLine.getQuantity() != null) ? orderLine.getQuantity() : 0;
+                int newQuantity = existingQty + quantity;
+                
                 orderLine.setQuantity(newQuantity);
                 orderLine.setSubtotal(price.multiply(BigDecimal.valueOf(newQuantity)));
                 tabItemRepository.save(orderLine);
@@ -118,6 +128,15 @@ public class BillingController {
 
             BigDecimal currentTotal = (tab.getTotalAmount() == null) ? BigDecimal.ZERO : tab.getTotalAmount();
             tab.setTotalAmount(currentTotal.add(addedSubtotal));
+
+            // Anti-Crash Guardrail: Satisfy database non-null constraints on legacy records
+            if (tab.getReferenceId() == null) {
+                tab.setReferenceId("REF-" + System.currentTimeMillis());
+            }
+            if (tab.getDepartmentSource() == null) {
+                tab.setDepartmentSource("Main Lounge Area");
+            }
+
             tabRepository.save(tab); 
         }
         return "redirect:/billing";

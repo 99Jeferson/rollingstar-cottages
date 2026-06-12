@@ -7,6 +7,6 @@ import java.util.List;
 
 @Repository
 public interface StaffRepository extends JpaRepository<Staff, Long> {
-    // Filter out completely terminated/archived staff if necessary, or sort by status
+    // This exact method must exist here for the controller to use it!
     List<Staff> findAllByOrderByEmploymentStatusAscFullNameAsc();
 }
