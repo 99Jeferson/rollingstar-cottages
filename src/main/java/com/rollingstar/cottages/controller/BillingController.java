@@ -103,6 +103,14 @@ public class BillingController {
         InventoryItem menuItem = itemRepository.findById(itemId).orElse(null);
 
         if (tab != null && menuItem != null && quantity != null && quantity > 0) {
+            
+            //  INVENTORY PROTECTION GUARDRAIL: Check availability before processing sale
+            int currentStock = (menuItem.getStockQuantity() != null) ? menuItem.getStockQuantity() : 0;
+            if (currentStock < quantity) {
+                // Return immediately with an error parameter if staff tries to oversell stock pool
+                return "redirect:/billing?error=low_stock";
+            }
+
             BigDecimal price = menuItem.getPrice();
             BigDecimal addedSubtotal = price.multiply(BigDecimal.valueOf(quantity));
 
@@ -125,6 +133,10 @@ public class BillingController {
                 orderLine.setSubtotal(addedSubtotal);
                 tabItemRepository.save(orderLine);
             }
+
+            //  STORE SYNCHRONIZATION: Subtract the sold items from the inventory pool
+            menuItem.setStockQuantity(currentStock - quantity);
+            itemRepository.save(menuItem);
 
             BigDecimal currentTotal = (tab.getTotalAmount() == null) ? BigDecimal.ZERO : tab.getTotalAmount();
             tab.setTotalAmount(currentTotal.add(addedSubtotal));

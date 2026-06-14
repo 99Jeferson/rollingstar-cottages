@@ -278,53 +278,105 @@
             box-shadow: 0 0 12px rgba(139, 92, 246, 0.4);
         }
 
-        /* Bulletproof Target-Driven Print Engine System Rules */
+        .alert-banner {
+            background-color: rgba(239, 68, 68, 0.15);
+            border: 1px solid #ef4444;
+            color: #f87171;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        /* 👑 Bulletproof Gmail-Style Print Engine System Rules */
         @media print {
-            /* 1. Force conceal everything without destroying DOM geometries */
+            /* 1. Global Reset: Clean white workspace canvas and solid black text profiles */
+            html, body {
+                background-color: #ffffff !important;
+                background: #ffffff !important;
+                color: #000000 !important;
+                font-family: Arial, Helvetica, sans-serif !important;
+                height: auto !important;
+                overflow: visible !important;
+            }
+
+            /* 2. Strip standard layout elements out of hardware rendering pipeline */
             body * {
                 visibility: hidden !important;
             }
             
-            /* 2. Re-verify visibility context exclusively for our targeted identifier data layout */
+            /* 3. Re-anchor visibility scope context exclusively for our audit ledger print card */
             #printable-ledger-area, #printable-ledger-area * {
                 visibility: visible !important;
             }
             
-            /* 3. Re-anchor the printable area component box back to top-left boundary */
+            /* 4. Format container to reflect flat, borderless document standards used by Google Mail */
             #printable-ledger-area {
                 position: absolute !important;
                 left: 0 !important;
                 top: 0 !important;
                 width: 100% !important;
                 background-color: #ffffff !important;
+                background: #ffffff !important;
                 color: #000000 !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                box-shadow: none !important;
+                border: none !important;
             }
 
-            /* 4. Force hard contrast colors for receipt printing outputs */
+            /* 5. Minimalist Gmail Header Treatment */
+            .card-header {
+                border-bottom: 2px solid #202124 !important; /* Google Dark Gray divider rule */
+                padding-bottom: 12px !important;
+                margin-bottom: 24px !important;
+            }
+
+            .card-header h3 {
+                color: #202124 !important;
+                font-size: 22px !important;
+                font-weight: 400 !important; /* Lighter font weights matching Google Style */
+                font-family: 'Google Sans', Roboto, Arial, sans-serif !important;
+            }
+
+            /* 6. High-Contrast Monochromatic Sheet Rows */
             .data-table {
                 width: 100% !important;
                 border-collapse: collapse !important;
                 background: #ffffff !important;
-                color: #000000 !important;
+                color: #202124 !important;
             }
 
             .data-table th {
-                color: #000000 !important;
-                background-color: #f3f4f6 !important;
-                border-bottom: 2px solid #000000 !important;
-                padding: 10px !important;
+                color: #5f6368 !important; /* Subdued secondary slate gray text color */
+                background-color: #f8f9fa !important; /* Soft Google background tint */
+                font-size: 13px !important;
+                text-transform: uppercase !important;
+                letter-spacing: 0.5px !important;
+                padding: 12px 14px !important;
+                border-bottom: 1px solid #dadce0 !important;
             }
 
             .data-table td {
-                color: #000000 !important;
-                border-bottom: 1px solid #cccccc !important;
-                padding: 10px !important;
+                color: #3c4043 !important;
+                font-size: 14px !important;
+                border-bottom: 1px solid #e8eaed !important; /* Elegant light-gray line dividers */
+                padding: 12px 14px !important;
                 background: transparent !important;
+            }
+
+            /* Drop action configurations from printed outputs */
+            .btn-print {
+                display: none !important;
+                visibility: hidden !important;
             }
 
             code {
                 color: #000000 !important;
                 font-family: monospace !important;
+                background-color: #f1f3f4 !important;
+                padding: 2px 6px !important;
+                border-radius: 4px !important;
             }
         }
     </style>
@@ -365,6 +417,10 @@
         </header>
 
         <section class="dashboard-view">
+            
+            <div th:if="${param.error != null and param.error[0] == 'low_stock'}" class="alert-banner">
+                🛑 Access Denied: Insufficient inventory pool quantity available to process this sale.
+            </div>
             
             <div class="metrics-grid">
                 <div class="metric-card accent-gold">
@@ -409,10 +465,16 @@
                             <td>
                                 <form th:action="@{/billing/add-item}" method="POST" class="form-inline">
                                     <input type="hidden" name="tabId" th:value="${tab.id}" />
-                                    <select name="itemId" class="input-dark" style="padding: 6px 12px;" required>
+                                    
+                                    <select name="itemId" class="input-dark" style="padding: 6px 12px; max-width: 280px;" required>
                                         <option value="" disabled selected>Select Menu Item</option>
-                                        <option th:each="item : ${menuItems}" th:value="${item.id}" th:text="${item.name} + ' (' + ${item.price} + ')'"></option>
+                                        <option th:each="item : ${menuItems}" 
+                                                th:value="${item.id}" 
+                                                th:disabled="${item.stockQuantity <= 0}"
+                                                th:text="${item.name} + ' (' + ${item.price} + ') ' + (${item.stockQuantity <= 0} ? '❌ OUT OF STOCK' : (${item.stockQuantity <= 15} ? '⚠️ LOW STOCK: ' + ${item.stockQuantity} + ' left' : ' Qty: ' + ${item.stockQuantity}))">
+                                        </option>
                                     </select>
+                                    
                                     <input type="number" name="quantity" class="input-dark" value="1" min="1" style="width: 70px; padding: 6px 10px;" required />
                                     <button type="submit" class="btn-gold" style="padding: 6px 12px; font-size: 13px;">+</button>
                                 </form>
@@ -470,16 +532,10 @@
     <script>
         function executeIsolatedPrint() {
             const printButton = document.querySelector('.btn-print');
-            
-            // 1. Strip out the print trigger button object from layout metrics
             if (printButton) {
                 printButton.style.setProperty('display', 'none', 'important');
             }
-            
-            // 2. Call the browser subsystem rendering thread
             window.print();
-            
-            // 3. Reinstate button layout models post hardware transfer pipeline initialization
             if (printButton) {
                 printButton.style.display = '';
             }
