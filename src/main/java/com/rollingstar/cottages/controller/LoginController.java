@@ -7,16 +7,15 @@ import org.springframework.web.bind.annotation.GetMapping;
 public class LoginController {
 
     /**
-     * Simply returns the login view. 
-     * Spring Security handles the actual POST /login request automatically.
+     * Renders the stylized system authentication login template page view interface.
      */
     @GetMapping("/login")
     public String showLoginPage() {
-        return "login"; 
+        return "login"; // Maps straight to src/main/resources/templates/login.html
     }
 
     /**
-     * Redirects the root URL to the login page.
+     * Safety fallback to automatically sweep incoming root web requests toward the login portal.
      */
     @GetMapping("/")
     public String redirectToLogin() {

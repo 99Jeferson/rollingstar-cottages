@@ -7,6 +7,10 @@ import java.util.List;
 
 @Repository
 public interface StaffRepository extends JpaRepository<Staff, Long> {
-    // This exact method must exist here for the controller to use it!
+
+    /**
+     * 🔍 This method must be explicitly declared here so the 
+     * StaffController can use it to fetch sorted workspace records.
+     */
     List<Staff> findAllByOrderByEmploymentStatusAscFullNameAsc();
 }

@@ -30,19 +30,16 @@ public class CottagesController {
 
     @GetMapping("/cottages")
     public String showCottagesDashboard(Model model) {
-        // Drops old Hibernate session snapshots so it reads fresh database entries
         entityManager.clear();
 
         List<Cottage> cottageList = cottageRepository.findAll();
         LocalDate today = LocalDate.now();
 
-        // Loop through all cottages to cross-reference active online website bookings
         for (Cottage cottage : cottageList) {
             String code = cottage.getCode(); 
             if (code == null || !code.contains("-")) continue;
 
             try {
-                // 1. Translate dashboard cottage code format (e.g., "ST-03") into website naming convention
                 String[] parts = code.split("-");
                 String prefix = parts[0].trim().toUpperCase();  
                 int roomNum = Integer.parseInt(parts[1].trim()); 
@@ -52,11 +49,10 @@ public class CottagesController {
                 else if ("DL".equals(prefix)) webRoomType = "deluxe";
                 else if ("SU".equals(prefix)) webRoomType = "suite";
 
-                // 2. Scan the bookings table ignoring text casing traps
                 List<Booking> activeWebBookings = bookingRepository.findByRoomTypeAndRoomNumberAndStatusIgnoreCase(webRoomType, roomNum, "confirmed");
 
-                // Clear any leftover UI state before matching so stale loop reads don't compound
-                cottage.setStatus("AVAILABLE");
+                // Set default base state
+                cottage.setStatus("AVAILABLE"); 
                 cottage.setGuest(null);
 
                 for (Booking webBooking : activeWebBookings) {
@@ -65,12 +61,11 @@ public class CottagesController {
 
                     if (checkIn == null || checkOut == null) continue;
 
-                    // 3. Dynamic Timeline Evaluation
                     boolean isCurrentGuest = (!today.isBefore(checkIn)) && (!today.isAfter(checkOut));
                     boolean isUpcomingGuest = checkIn.isAfter(today);
 
                     if (isCurrentGuest) {
-                        cottage.setStatus("OCCUPIED");
+                        cottage.setStatus("OCCUPIED"); 
                         cottage.setGuest(webBooking.getGuestName() + " 🌐 [LIVE NOW]");
                         break; 
                     } 
@@ -89,38 +84,38 @@ public class CottagesController {
         return "cottages";
     }
 
-    // FUNCTION 1: Toggle Room Status (Instant Maintenance/Available)
     @PostMapping("/cottages/toggle-status")
     public String toggleRoomStatus(@RequestParam("code") String code) {
-        Optional<Cottage> optionalCottage = cottageRepository.findById(code);
+        // 🌟 BYPASS: Using explicit findByCode to completely clear the findById error
+        Optional<Cottage> optionalCottage = cottageRepository.findByCode(code);
         if (optionalCottage.isPresent()) {
             Cottage cottage = optionalCottage.get();
-            if ("AVAILABLE".equalsIgnoreCase(cottage.getStatus())) {
-                cottage.setStatus("MAINTENANCE");
-                cottage.setGuest(null); // Clear guest text if moving to maintenance
-            } else if ("MAINTENANCE".equalsIgnoreCase(cottage.getStatus())) {
-                cottage.setStatus("AVAILABLE");
+            
+            String currentStatus = cottage.getStatus(); 
+            
+            if ("AVAILABLE".equalsIgnoreCase(currentStatus)) {
+                cottage.setStatus("MAINTENANCE"); 
+                cottage.setGuest(null);
+            } else {
+                cottage.setStatus("AVAILABLE"); 
             }
             cottageRepository.save(cottage);
         }
         return "redirect:/cottages";
     }
 
-    // FUNCTION 2: Manage Room (Assign Walk-In Guest & Check In)
     @org.springframework.transaction.annotation.Transactional
     @PostMapping("/cottages/check-in")
     public String checkInGuest(@RequestParam("code") String code, @RequestParam("guestName") String guestName) {
         System.out.println("📥 FRONT DESK EVENT: Processing check-in for cottage: " + code + " | Guest: " + guestName);
         
-        Optional<Cottage> optionalCottage = cottageRepository.findById(code);
+        Optional<Cottage> optionalCottage = cottageRepository.findByCode(code);
         if (optionalCottage.isPresent() && guestName != null && !guestName.trim().isEmpty()) {
             Cottage cottage = optionalCottage.get();
             
-            // Update local cottage layout state
             cottage.setGuest(guestName);
-            cottage.setStatus("OCCUPIED");
+            cottage.setStatus("OCCUPIED"); 
             cottageRepository.save(cottage);
-            System.out.println("💾 Local cottage table updated to OCCUPIED for " + code);
 
             try {
                 String[] parts = code.split("-");
@@ -128,22 +123,19 @@ public class CottagesController {
                 int roomNum = Integer.parseInt(parts[1].trim()); 
 
                 String webRoomType = "";
-                String defaultCapacity = "2"; // Default fallback capacity allocation
+                int defaultCapacity = 2; 
 
                 if ("ST".equals(prefix)) {
                     webRoomType = "standard";
-                    defaultCapacity = "2";
+                    defaultCapacity = 2;
                 } else if ("DL".equals(prefix)) {
                     webRoomType = "deluxe";
-                    defaultCapacity = "3";
+                    defaultCapacity = 3;
                 } else if ("SU".equals(prefix)) {
                     webRoomType = "suite";
-                    defaultCapacity = "4";
+                    defaultCapacity = 4;
                 }
 
-                System.out.println("🚀 Entity Sync Input Data -> Type: '" + webRoomType + "' | Number: " + roomNum);
-
-                // JPA Repository Approach to persist smoothly via entity structure
                 Booking walkInBooking = new Booking();
                 walkInBooking.setGuestName(guestName + " 🏢 [Desk Walk-In]");
                 walkInBooking.setEmail("frontdesk@rollingstar.com");
@@ -153,8 +145,7 @@ public class CottagesController {
                 walkInBooking.setCheckInDate(LocalDate.now());
                 walkInBooking.setCheckOutDate(LocalDate.now().plusDays(1));
 
-                // ✨ FOOLPROOF FIX: Assign capacity string directly without using volatile cottage reflection fields
-                walkInBooking.setGuests(defaultCapacity);
+                walkInBooking.setGuests(String.valueOf(defaultCapacity)); 
 
                 bookingRepository.save(walkInBooking);
                 System.out.println("✨ POSTGRES CONFIRMATION: Managed Booking Entity inserted via Repository!");
@@ -163,19 +154,16 @@ public class CottagesController {
                 System.err.println("❌ BACKEND ERROR: Booking sync failed: " + e.getMessage());
                 throw e; 
             }
-        } else {
-            System.out.println("⚠️ Check-in skipped: Invalid input or cottage not found.");
         }
         return "redirect:/cottages";
     }
 
-    // FUNCTION 3: Manage Room (Vacate Room & Check Out Walk-In)
     @org.springframework.transaction.annotation.Transactional 
     @PostMapping("/cottages/check-out")
     public String checkOutGuest(@RequestParam("code") String code) {
         System.out.println("📤 FRONT DESK EVENT: Attempting check-out for cottage: " + code);
         
-        Optional<Cottage> optionalCottage = cottageRepository.findById(code);
+        Optional<Cottage> optionalCottage = cottageRepository.findByCode(code);
         if (optionalCottage.isPresent()) {
             Cottage cottage = optionalCottage.get();
             
@@ -189,26 +177,16 @@ public class CottagesController {
                 else if ("DL".equals(prefix)) webRoomType = "deluxe";
                 else if ("SU".equals(prefix)) webRoomType = "suite";
 
-                // Broaden the delete condition to drop records purely by coordinates and confirmation status.
-                // This guarantees that mismatched desk fallback emails do not prevent checkout.
-                int rowsDeleted = entityManager.createNativeQuery(
-                    "DELETE FROM bookings WHERE LOWER(room_type) = LOWER(:roomType) AND room_number = :roomNumber AND LOWER(status) = 'confirmed'"
-                )
-                .setParameter("roomType", webRoomType)
-                .setParameter("roomNumber", roomNum)
-                .executeUpdate();
-
-                System.out.println("🗑️ POSTGRES CONFIRMATION: Cleaned up blocks. Rows deleted: " + rowsDeleted);
+                bookingRepository.deleteByRoomTypeIgnoreCaseAndRoomNumberAndStatusIgnoreCase(webRoomType, roomNum, "confirmed");
+                System.out.println("🗑️ POSTGRES CONFIRMATION: Cleaned up blocks via safely derived repository invocation.");
 
             } catch (Exception e) {
                 System.err.println("⚠️ Warning: Could not clear website table block: " + e.getMessage());
             }
 
-            // Reset local cottage dashboard card layout cleanly
             cottage.setGuest(null);
-            cottage.setStatus("AVAILABLE");
+            cottage.setStatus("AVAILABLE"); 
             cottageRepository.save(cottage);
-            System.out.println("💾 Local cottage table reset to AVAILABLE for " + code);
         }
         return "redirect:/cottages";
     }

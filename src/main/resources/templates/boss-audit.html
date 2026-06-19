@@ -4,64 +4,150 @@
     <meta charset="UTF-8">
     <title>Rolling Star | Secure Boss Terminal</title>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background-color: #060814; color: #f1f5f9; padding: 50px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-        .secure-container { border: 2px dashed #ef4444; padding: 40px; border-radius: 14px; background: #0f1123; max-width: 900px; width: 100%; box-shadow: 0 0 30px rgba(239, 68, 68, 0.15); }
-        h1 { color: #ef4444; font-size: 28px; font-weight: 700; margin-bottom: 10px; display: flex; align-items: center; gap: 12px; }
-        p { color: #9ca3af; font-size: 14px; margin-bottom: 20px; }
-        hr { border: 0; border-top: 1px solid #1e293b; margin: 20px 0; }
-        .log-table { width: 100%; border-collapse: collapse; margin-top: 20px; text-align: left; }
-        .log-table th { padding: 12px; color: #f87171; font-size: 13px; text-transform: uppercase; border-bottom: 2px solid #2d1616; background: rgba(239, 68, 68, 0.05); }
-        .log-table td { padding: 12px; font-size: 14px; border-bottom: 1px solid #1e293b; color: #cbd5e1; }
-        .badge-fail { background: rgba(239, 68, 68, 0.2); color: #f87171; padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: bold; }
-        .badge-success { background: rgba(16, 185, 129, 0.2); color: #34d399; padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: bold; }
-        .btn-back { display: inline-block; background: #1e293b; color: #fff; text-decoration: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; margin-top: 20px; transition: background 0.2s; }
-        .btn-back:hover { background: #334155; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', 'Segoe UI', sans-serif; }
+        body { background-color: #0b0f19; color: #f1f5f9; padding: 30px; min-height: 100vh; }
+        
+        /* Layout Framework */
+        .dashboard-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; max-width: 1600px; margin: 0 auto; }
+        header { max-width: 1600px; margin: 0 auto 30px auto; display: flex; justify-content: space-between; align-items: center; }
+        
+        .title-block h1 { color: #f87171; font-size: 26px; font-weight: 800; letter-spacing: -0.5px; display: flex; align-items: center; gap: 10px; }
+        .title-block p { color: #64748b; font-size: 14px; margin-top: 4px; }
+        
+        .card { background: #111827; border: 1px solid #1f2937; border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.25); position: relative; overflow: hidden; }
+        .card::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: linear-gradient(90deg, #ef4444, #3b82f6); }
+        .card.staff-card::before { background: #10b981; }
+
+        h2 { font-size: 16px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+
+        /* Metric Matrix Cards */
+        .financial-master-suite { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; grid-column: span 2; }
+        .stat-box { background: #1f2937; border-radius: 12px; padding: 20px; border-left: 4px solid #ef4444; }
+        .stat-box.bar-variant { border-left-color: #3b82f6; }
+        .stat-box.net-variant { border-left-color: #10b981; background: linear-gradient(145deg, #111827, #064e3b50); }
+        .stat-box label { font-size: 12px; font-weight: 600; text-transform: uppercase; color: #9ca3af; letter-spacing: 0.5px; }
+        .stat-box .val { font-size: 22px; font-weight: 800; margin-top: 8px; font-family: monospace; }
+        .stat-box .sub-val { font-size: 12px; color: #64748b; margin-top: 4px; }
+
+        /* Interactive Logs & Registries Tables */
+        .table-wrapper { max-height: 480px; overflow-y: auto; border: 1px solid #1f2937; border-radius: 8px; }
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        th { background: #1f2937; padding: 12px 16px; font-size: 11px; text-transform: uppercase; color: #9ca3af; font-weight: 700; position: sticky; top: 0; }
+        td { padding: 14px 16px; font-size: 13px; border-bottom: 1px solid #1f2937; color: #cbd5e1; }
+        tr:hover td { background: #111827; }
+
+        code { background: #374151; padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 12px; color: #f3f4f6; }
+
+        /* Status Badges */
+        .badge { padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+        .badge-fail { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+        .badge-success { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+        .badge-root { background: rgba(147, 51, 234, 0.15); color: #c084fc; border: 1px solid rgba(147, 51, 234, 0.3); }
+
+        /* HR Management Operations CSS Elements */
+        .staff-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; background: #1f2937; border-radius: 8px; margin-bottom: 10px; border: 1px solid #374151; }
+        .staff-info { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 14px; }
+        .staff-avatar { width: 32px; height: 32px; background: #10b981; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; color: white; }
+        
+        .btn-action { background: transparent; border: 1px solid #ef4444; color: #ef4444; padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; transition: all 0.2s; font-weight: 600; }
+        .btn-action:hover { background: #ef4444; color: white; }
+
+        .input-group { display: flex; gap: 8px; margin-top: 15px; }
+        .input-group input { flex: 1; background: #1f2937; border: 1px solid #374151; padding: 10px; border-radius: 8px; color: white; font-size: 13px; }
+        .input-group input:focus { outline: none; border-color: #10b981; }
+        .btn-submit { background: #10b981; color: white; border: none; padding: 0 16px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 13px; }
+        .btn-submit:hover { background: #059669; }
+
+        .btn-nav-back { background: #1f2937; border: 1px solid #374151; color: #cbd5e1; padding: 10px 20px; border-radius: 8px; font-weight: 600; text-decoration: none; font-size: 13px; transition: all 0.2s; }
+        .btn-nav-back:hover { background: #374151; color: white; }
     </style>
 </head>
 <body>
-    <div class="secure-container">
-        <h1>🔒 Restricted Security Audit Portal</h1>
-        <p>Authorized executive administrative access verified. Real-time platform security contexts and access attempts are listed below.</p>
+
+    <header>
+        <div class="title-block">
+            <h1>🔒 Rolling Star Root Command Engine</h1>
+            <p>High-level system control dashboard. Tracking system resources, active ledger channels, and personnel telemetry data.</p>
+        </div>
+        <a th:href="@{/cottages}" class="btn-nav-back">← Exit Command Center</a>
+    </header>
+
+    <main class="dashboard-grid">
         
-        <hr>
+        <div class="financial-master-suite">
+            <div class="stat-box">
+                <label>🏠 Cottage Collections (Daily)</label>
+                <div class="val" style="color: #f87171;" th:text="|UGX ${#numbers.formatInteger(cottageDaily, 3, 'COMMA')}|">UGX 0</div>
+                <div class="sub-val" th:text="|Overall Accumulator: UGX ${#numbers.formatInteger(cottageTotal, 3, 'COMMA')}|">Overall: UGX 0</div>
+            </div>
+            <div class="stat-box bar-variant">
+                <label>🍹 Bar POS Drinks Billing (Daily)</label>
+                <div class="val" style="color: #60a5fa;" th:text="|UGX ${#numbers.formatInteger(billingDaily, 3, 'COMMA')}|">UGX 0</div>
+                <div class="sub-val" th:text="|Overall Accumulator: UGX ${#numbers.formatInteger(billingTotal, 3, 'COMMA')}|">Overall: UGX 0</div>
+            </div>
+            <div class="stat-box net-variant">
+                <label>📈 Consolidated Operations Yield</label>
+                <div class="val" style="color: #34d399;" th:text="|UGX ${#numbers.formatInteger(netDaily, 3, 'COMMA')}|">UGX 0</div>
+                <div class="sub-val" style="color: #a7f3d0;" th:text="|Total Lifetime Pipeline: UGX ${#numbers.formatInteger(netOverall, 3, 'COMMA')}|">Total Pipeline: UGX 0</div>
+            </div>
+        </div>
 
-        <table class="log-table">
-            <thead>
-                <tr>
-                    <th>Timestamp</th>
-                    <th>User Principal</th>
-                    <th>Action Event Context</th>
-                    <th>Resource Route</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>2026-06-08 15:32:11</td>
-                    <td><code>bartender_juma</code></td>
-                    <td>Attempted unauthorized ledger access</td>
-                    <td><code>/billing/history</code></td>
-                    <td><span class="badge-fail">DENIED (403)</span></td>
-                </tr>
-                <tr>
-                    <td>2026-06-08 15:30:45</td>
-                    <td><code>manager_alice</code></td>
-                    <td>Executed physical print pipeline</td>
-                    <td><code>/billing/print</code></td>
-                    <td><span class="badge-success">AUTHORIZED</span></td>
-                </tr>
-                <tr>
-                    <td>2026-06-08 14:15:22</td>
-                    <td><code>boss_clint</code></td>
-                    <td>Elevated terminal initialization</td>
-                    <td><code>/auditing</code></td>
-                    <td><span class="badge-success">ROOT ADMIN</span></td>
-                </tr>
-            </tbody>
-        </table>
+        <div class="card">
+            <h2>📡 Real-Time Global Telemetry Intercept Feed</h2>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Principal User Context</th>
+                            <th>Operation Event Context</th>
+                            <th>Resource Route</th>
+                            <th>Verification</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="entry : ${logs}">
+                            <td style="font-family: monospace; color: #9ca3af;" th:text="${#temporals.format(entry.timestamp, 'yyyy-MM-dd HH:mm:ss')}">Timestamp</td>
+                            <td><code th:text="${entry.userPrincipal}">user</code></td>
+                            <td th:text="${entry.actionEvent}" style="font-weight: 500;">Action Context</td>
+                            <td><code style="color: #93c5fd;" th:text="${entry.resourceRoute}">/route</code></td>
+                            <td>
+                                <span th:if="${#strings.contains(entry.status, 'DENIED')}" class="badge badge-fail" th:text="${entry.status}">DENIED</span>
+                                <span th:if="${entry.status == 'AUTHORIZED'}" class="badge badge-success" th:text="${entry.status}">AUTHORIZED</span>
+                                <span th:if="${entry.status == 'ROOT ADMIN'}" class="badge badge-root" th:text="${entry.status}">ROOT ADMIN</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
 
-        <a th:href="@{/billing}" class="btn-back">← Return to Billing Engine</a>
-    </div>
+        <div class="card staff-card">
+            <h2>👥 Identity Management &amp; System Personnel</h2>
+            <p style="color: #64748b; font-size: 13px; margin-bottom: 20px;">Onboard or offboard system users to authorize credentials across billing and cottage check-in routers.</p>
+            
+            <div class="staff-list">
+                <div th:each="worker : ${workers}" class="staff-item">
+                    <div class="staff-info">
+                        <div class="staff-avatar" th:text="${#strings.substring(worker,0,1)}">U</div>
+                        <span th:text="${worker}">Employee Name</span>
+                    </div>
+                    <form th:action="@{/auditing/staff/offboard}" method="post">
+                        <input type="hidden" name="workerName" th:value="${worker}">
+                        <button type="submit" class="btn-action">Offboard</button>
+                    </form>
+                </div>
+            </div>
+
+            <form th:action="@{/auditing/staff/onboard}" method="post">
+                <div class="input-group">
+                    <input type="text" name="workerName" placeholder="Enter full name for verification credentials..." required>
+                    <button type="submit" class="btn-submit">Onboard</button>
+                </div>
+            </form>
+        </div>
+
+    </main>
+
 </body>
 </html>

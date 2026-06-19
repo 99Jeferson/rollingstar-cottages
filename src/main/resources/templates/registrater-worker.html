@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Rolling Stars | Staff Management</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #0b0f19; color: #f1f5f9; padding: 50px; display: flex; justify-content: center; }
+        .registration-card { background-color: #111827; border: 1px solid #374151; padding: 40px; border-radius: 12px; width: 100%; max-width: 450px; box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
+        h2 { color: #f59e0b; margin-bottom: 5px; font-size: 24px; }
+        p { color: #9ca3af; font-size: 14px; margin-bottom: 25px; }
+        .form-group { margin-bottom: 20px; display: flex; flex-direction: column; gap: 8px; }
+        label { font-size: 13px; font-weight: 600; color: #a78bfa; text-transform: uppercase; }
+        .input-field { background-color: #1f2937; border: 1px solid #4b5563; color: #fff; padding: 12px; border-radius: 6px; font-size: 15px; outline: none; }
+        .input-field:focus { border-color: #8b5cf6; }
+        .btn-submit { background-color: #f59e0b; color: #0b0f19; border: none; padding: 14px; border-radius: 6px; font-weight: 700; font-size: 16px; cursor: pointer; margin-top: 10px; transition: background 0.2s; }
+        .btn-submit:hover { background-color: #d97706; }
+        .alert-success { background-color: rgba(16, 185, 129, 0.15); border: 1px solid #10b981; color: #34d399; padding: 12px; border-radius: 6px; margin-bottom: 20px; font-size: 14px; }
+        .alert-error { background-color: rgba(239, 68, 68, 0.15); border: 1px solid #ef4444; color: #f87171; padding: 12px; border-radius: 6px; margin-bottom: 20px; font-size: 14px; }
+    </style>
+</head>
+<body>
+
+    <div class="registration-card">
+        <h2>Register New Worker</h2>
+        <p>Assign credentials and system system roles for new lounge personnel.</p>
+
+        <div th:if="${successMsg}" class="alert-success" th:text="${successMsg}"></div>
+        <div th:if="${errorMsg}" class="alert-error" th:text="${errorMsg}"></div>
+
+        <form th:action="@{/admin/workers/register}" method="POST">
+            <div class="form-group">
+                <label>System Username</label>
+                <input type="text" name="username" class="input-field" placeholder="e.g., brian_lounge" required />
+            </div>
+
+            <div class="form-group">
+                <label>Temporary System Password</label>
+                <input type="password" name="password" class="input-field" placeholder="Enter secure default password" required />
+            </div>
+
+            <div class="form-group">
+                <label>System Access Authorization Role</label>
+                <select name="role" class="input-field" required>
+                    <option value="" disabled selected>Select Assignment Scope</option>
+                    <option value="BARTENDER">BARTENDER (Lounge Tabs &amp; Drinks)</option>
+                    <option value="COTTAGE_PERSONNEL">COTTAGE PERSONNEL (Room Bookings)</option>
+                    <option value="RESTAURANT_STAFF">RESTAURANT STAFF (Kitchen Orders)</option>
+                    <option value="MANAGER">MANAGER (Full Operational Access)</option>
+                </select>
+            </div>
+
+            <button type="submit" class="btn-submit">Provision Worker Account</button>
+        </form>
+    </div>
+
+</body>
+</html>

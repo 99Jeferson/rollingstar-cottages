@@ -61,7 +61,6 @@
             transition: all 0.2s ease;
         }
 
-        /* Gold highlight on hover and active status */
         .nav-item.active a, .nav-item a:hover {
             background: rgba(139, 92, 246, 0.15);
             color: #8b5cf6;
@@ -155,12 +154,10 @@
             color: #fff;
         }
 
-        /* Gold Highlight for Financial Indicators */
         .metric-card.accent-gold .metric-value {
             color: #f59e0b;
         }
         
-        /* Red Highlight for Alerts/Indicators */
         .metric-card.accent-red .metric-value {
             color: #ef4444;
         }
@@ -217,7 +214,8 @@
         }
 
         .status-badge.active { background: rgba(16, 185, 129, 0.15); color: #10b981; }
-        .status-badge.pending { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+        .status-badge.break { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+        .status-badge.terminated { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
     </style>
 </head>
 <body>
@@ -229,11 +227,8 @@
         </div>
         <ul class="nav-menu">
             <li class="nav-item active"><a th:href="@{/dashboard}">Dashboard Overview</a></li>
-            
             <li class="nav-item"><a th:href="@{/cottages}">Cottages Configuration</a></li>
-            
             <li class="nav-item"><a th:href="@{/billing}">Billing &amp; Invoices</a></li>
-            
             <li class="nav-item"><a th:href="@{/inventory}">Inventory Tracker</a></li>
             <li class="nav-item"><a th:href="@{/staffing}">Staffing Management</a></li>
             
@@ -261,57 +256,58 @@
             <div class="metrics-grid">
                 <div class="metric-card">
                     <span class="metric-title">Occupied Cottages</span>
-                    <span class="metric-value" style="color: #10b981;">12 / 20</span>
+                    <span class="metric-value" style="color: #10b981;">
+                        <span th:text="${occupiedCottages}">12</span> / 18
+                    </span>
                 </div>
                 <div class="metric-card accent-gold">
                     <span class="metric-title">Today's Transactions</span>
-                    <span class="metric-value">UGX 450,000</span>
+                    <span class="metric-value">
+                        UGX <span th:text="${#numbers.formatInteger(todayRevenue, 1, 'COMMA')}">450,000</span>
+                    </span>
                 </div>
                 <div class="metric-card">
                     <span class="metric-title">Active Staff Shifts</span>
-                    <span class="metric-value" style="color: #a78bfa;">5 On Duty</span>
+                    <span class="metric-value" style="color: #a78bfa;">
+                        <span th:text="${activeStaffCount}">5</span> On Duty
+                    </span>
                 </div>
                 <div class="metric-card accent-red">
                     <span class="metric-title">Low Stock Indicators</span>
-                    <span class="metric-value">3 Alerts</span>
+                    <span class="metric-value">
+                        <span th:text="${lowStockAlerts}">3</span> Alerts
+                    </span>
                 </div>
             </div>
 
             <div class="content-card">
                 <div class="card-header">
-                    <h3>Recent Operations &amp; Bookings</h3>
+                    <h3>Current Personnel Deployments &amp; Shifts</h3>
                 </div>
                 <table class="data-table">
                     <thead>
                         <tr>
-                            <th>Reference ID</th>
-                            <th>Staff Member</th>
-                            <th>Department Assignment</th>
-                            <th>System Role</th>
-                            <th>Status Flag</th>
+                            <th>Staff ID</th>
+                            <th>Staff Member Name</th>
+                            <th>Station / Department Assignment</th>
+                            <th>System Authorization Role</th>
+                            <th>Active Shift Status Flag</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr>
-                            <td>#RS-1001</td>
-                            <td>Brian</td>
-                            <td>Main Lounge Area</td>
-                            <td>Bartender</td>
-                            <td><span class="status-badge active">Active</span></td>
+                        <tr th:each="staff : ${activeStaffList}">
+                            <td>#RS-<span th:text="${staff.id}">1001</span></td>
+                            <td class="fw-bold" th:text="${staff.fullName}">Brian Omondi</td>
+                            <td th:text="${staff.departmentAssignment}">Main Lounge Area</td>
+                            <td th:text="${staff.systemUserRole != null ? staff.systemUserRole : 'NONE'}">BARTENDER</td>
+                            <td>
+                                <span th:if="${staff.employmentStatus == 'ACTIVE'}" class="status-badge active">Active</span>
+                                <span th:if="${staff.employmentStatus == 'ON_BREAK'}" class="status-badge break">On Break</span>
+                                <span th:if="${staff.employmentStatus == 'FIRED' or staff.employmentStatus == 'TERMINATED' or staff.employmentStatus == 'INACTIVE' or staff.employmentStatus == 'REPLACED'}" class="status-badge terminated">Inactive</span>
+                            </td>
                         </tr>
-                        <tr>
-                            <td>#RS-1002</td>
-                            <td>Jane</td>
-                            <td>Front Office Operations</td>
-                            <td>Manager</td>
-                            <td><span class="status-badge active">Active</span></td>
-                        </tr>
-                        <tr>
-                            <td>#RS-1003</td>
-                            <td>James</td>
-                            <td>Cottage Hospitality Services</td>
-                            <td>Bartender</td>
-                            <td><span class="status-badge pending">Break Shift</span></td>
+                        <tr th:if="${#lists.isEmpty(activeStaffList)}">
+                            <td colspan="5" class="text-center text-muted py-4">No working staff allocations deployed onto the current shift database.</td>
                         </tr>
                     </tbody>
                 </table>

@@ -24,12 +24,16 @@ public class BillingController {
     @Autowired 
     private BillingRepository tabRepository; 
     
-    @Autowired 
-    private InventoryItemRepository itemRepository;
+    
+    private final InventoryItemRepository itemRepository;
     
     @Autowired 
     private TabItemRepository tabItemRepository;
 
+    public BillingController(InventoryItemRepository itemRepository) {
+    	this.itemRepository=itemRepository;
+    }
+    
     @GetMapping
     public String showBillingSystem(Model model) {
         List<BillingTab> activeTabs = tabRepository.findByStatus("OPEN");

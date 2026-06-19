@@ -19,5 +19,6 @@ public interface BillingRepository extends JpaRepository<BillingTab, Long> {
     List<BillingTab> findByDepartmentSourceAndStatus(String departmentSource, String status);
     
     // Sorts all entries by their latest updates
+    
     List<BillingTab> findAllByOrderByUpdatedAtDesc();
 }
