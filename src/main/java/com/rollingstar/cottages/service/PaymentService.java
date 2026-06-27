@@ -22,15 +22,45 @@ public class PaymentService {
     }
 
     /**
-     * Initializes a new payment transaction record inside our system.
+     * Overloaded fallback method to preserve backwards compatibility.
+     * Defaults to MOBILE_MONEY and PENDING state for existing features like cottage checkout.
      */
     @Transactional
     public PaymentTransaction initializePayment(BigDecimal amount, String currency, String customerPhone) {
-        // Generate a clean, unique transaction reference string using a timestamp and a short UUID hash
+        return initializePayment(amount, currency, customerPhone, "MOBILE_MONEY");
+    }
+
+    /**
+     * Master initialization method supporting split payment architectures (CASH vs MOBILE_MONEY).
+     */
+    @Transactional
+    public PaymentTransaction initializePayment(BigDecimal amount, String currency, String customerPhone, String paymentMethod) {
+        // Generate a clean, unique transaction reference string
         String uniqueRef = "COT-TX-" + System.currentTimeMillis() + "-" + UUID.randomUUID().toString().substring(0, 4).toUpperCase();
 
-        // Create a new transaction instance defaulting to "PENDING"
-        PaymentTransaction transaction = new PaymentTransaction(uniqueRef, amount, currency, customerPhone, "PENDING");
+        String normalizedMethod = (paymentMethod != null) ? paymentMethod.toUpperCase() : "MOBILE_MONEY";
+        String initialStatus = "PENDING";
+        String externalIdPlaceholder = null;
+
+        // Architectural Business Rule: Cash transactions are instantly finalized
+        if ("CASH".equals(normalizedMethod)) {
+            initialStatus = "SUCCESSFUL";
+            externalIdPlaceholder = "CASH_COUNTER_COLLECTION";
+        }
+
+        // Instantiate the record using our structural parameters
+        PaymentTransaction transaction = new PaymentTransaction(
+                uniqueRef, 
+                amount, 
+                currency, 
+                customerPhone, 
+                initialStatus, 
+                normalizedMethod
+        );
+
+        if (externalIdPlaceholder != null) {
+            transaction.setExternalGatewayId(externalIdPlaceholder);
+        }
 
         // Persist it into our database
         return paymentRepository.save(transaction);

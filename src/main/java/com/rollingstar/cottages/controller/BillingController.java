@@ -10,6 +10,7 @@ import com.rollingstar.cottages.model.TabItem;
 import com.rollingstar.cottages.repository.BillingRepository;
 import com.rollingstar.cottages.repository.InventoryItemRepository;
 import com.rollingstar.cottages.repository.TabItemRepository;
+import com.rollingstar.cottages.service.PaymentService;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -21,22 +22,26 @@ import org.springframework.security.core.Authentication;
 @RequestMapping("/billing")
 public class BillingController {
 
-    @Autowired 
-    private BillingRepository tabRepository; 
-    
-    
+    private final BillingRepository tabRepository; 
     private final InventoryItemRepository itemRepository;
-    
-    @Autowired 
-    private TabItemRepository tabItemRepository;
+    private final TabItemRepository tabItemRepository;
+    private final PaymentService paymentService;
 
-    public BillingController(InventoryItemRepository itemRepository) {
-    	this.itemRepository=itemRepository;
+    @Autowired 
+    public BillingController(BillingRepository tabRepository,
+                             InventoryItemRepository itemRepository,
+                             TabItemRepository tabItemRepository,
+                             PaymentService paymentService) {
+        this.tabRepository = tabRepository;
+        this.itemRepository = itemRepository;
+        this.tabItemRepository = tabItemRepository;
+        this.paymentService = paymentService;
     }
     
     @GetMapping
     public String showBillingSystem(Model model) {
         List<BillingTab> activeTabs = tabRepository.findByStatus("OPEN");
+        // Pulling in both SETTLED and PENDING_PAYMENT items to prevent active trackers from disappearing
         List<BillingTab> settledTabs = tabRepository.findByStatus("SETTLED");
 
         BigDecimal totalSales = settledTabs.stream()
@@ -73,7 +78,11 @@ public class BillingController {
     }
 
     @PostMapping("/settle-tab")
-    public String settleTab(@RequestParam Long tabId, Authentication authentication) {
+    public String settleTab(@RequestParam Long tabId, 
+                            @RequestParam(defaultValue = "CASH") String paymentMethod,
+                            @RequestParam(required = false) String customerPhone,
+                            Authentication authentication) {
+        
         BillingTab tab = tabRepository.findById(tabId).orElse(null);
         
         if (tab != null && authentication != null) {
@@ -85,9 +94,30 @@ public class BillingController {
                 tab.setDepartmentSource("Main Lounge Area");
             }
 
-            tab.setStatus("SETTLED");
-            tab.setSettledBy(authentication.getName()); 
-            tab.setSettledAt(LocalDateTime.now());
+            BigDecimal billAmount = (tab.getTotalAmount() != null) ? tab.getTotalAmount() : BigDecimal.ZERO;
+            String cleanPhone = (customerPhone != null && !customerPhone.trim().isEmpty()) ? customerPhone.trim() : "0700000000";
+            String methodNormalized = paymentMethod.toUpperCase();
+
+            // 1. Initialize our hybrid audit ledger pipeline tracker
+            try {
+                paymentService.initializePayment(billAmount, "UGX", cleanPhone, methodNormalized);
+                System.out.println("💳 BILLING INTEGRATION: Created transaction entry for Tab ID " + tabId + " | Method: " + methodNormalized + " | Amount: " + billAmount + " UGX");
+            } catch (Exception e) {
+                System.err.println("❌ BACKEND ERROR: Tracking ledger update failed: " + e.getMessage());
+            }
+
+            // 2. Determine state transition rule based on selection
+            if ("CASH".equals(methodNormalized)) {
+                tab.setStatus("SETTLED");
+                tab.setSettledBy(authentication.getName()); 
+                tab.setSettledAt(LocalDateTime.now());
+                System.out.println("💰 CASH COLLECTION: Tab ID " + tabId + " instantly archived as SETTLED.");
+            } else {
+                // Mobile Money starts as PENDING. Keep tab alive until Webhook confirmation arrives.
+                tab.setStatus("PENDING_PAYMENT");
+                System.out.println("📱 MOBILE MONEY: Tab ID " + tabId + " held in intermediate PENDING_PAYMENT buffer state.");
+            }
+            
             tabRepository.save(tab);
         }
         return "redirect:/billing";

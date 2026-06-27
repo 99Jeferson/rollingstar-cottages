@@ -29,7 +29,11 @@ public class PaymentTransaction {
     @Column(name = "status", nullable = false)
     private String status;
 
-    // Reference ID sent back back by MTN/Airtel/FinTech Gateway after payment complete
+    // Hybrid Type Tracker: CASH, MOBILE_MONEY, CARD
+    @Column(name = "payment_method", nullable = false)
+    private String paymentMethod;
+
+    // Reference ID sent back by MTN/Airtel/FinTech Gateway after payment complete
     @Column(name = "external_gateway_id")
     private String externalGatewayId;
 
@@ -43,13 +47,20 @@ public class PaymentTransaction {
     public PaymentTransaction() {}
 
     // Overloaded Constructor for easy instantiation when checkout begins
-    public PaymentTransaction(String txReference, BigDecimal amount, String currency, String customerPhone, String status) {
+    public PaymentTransaction(String txReference, BigDecimal amount, String currency, String customerPhone, String status, String paymentMethod) {
         this.txReference = txReference;
         this.amount = amount;
         this.currency = currency;
         this.customerPhone = customerPhone;
         this.status = status;
+        this.paymentMethod = paymentMethod.toUpperCase();
         this.createdAt = LocalDateTime.now();
+    }
+
+    // Automatically refresh the updated_at column before updating the database row
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
     }
 
     // --- GETTERS AND SETTERS ---
@@ -70,6 +81,9 @@ public class PaymentTransaction {
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+
+    public String getPaymentMethod() { return paymentMethod; }
+    public void setPaymentMethod(String paymentMethod) { this.paymentMethod = paymentMethod != null ? paymentMethod.toUpperCase() : null; }
 
     public String getExternalGatewayId() { return externalGatewayId; }
     public void setExternalGatewayId(String externalGatewayId) { this.externalGatewayId = externalGatewayId; }

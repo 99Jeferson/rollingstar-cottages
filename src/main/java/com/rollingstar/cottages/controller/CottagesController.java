@@ -169,8 +169,10 @@ public class CottagesController {
 
     @org.springframework.transaction.annotation.Transactional 
     @PostMapping("/cottages/check-out")
-    public String checkOutGuest(@RequestParam("code") String code) {
-        System.out.println("📤 FRONT DESK EVENT: Attempting check-out for cottage: " + code);
+    public String checkOutGuest(@RequestParam("code") String code,
+                                @RequestParam(defaultValue = "CASH") String paymentMethod,
+                                @RequestParam(required = false) String customerPhone) {
+        System.out.println("📤 FRONT DESK EVENT: Attempting check-out for cottage: " + code + " | Method: " + paymentMethod);
         
         Optional<Cottage> optionalCottage = cottageRepository.findByCode(code);
         if (optionalCottage.isPresent()) {
@@ -201,12 +203,14 @@ public class CottagesController {
                 System.err.println("⚠️ Warning: Could not clear website table block: " + e.getMessage());
             }
 
-            // Generate the PENDING transaction tracking entity record before clearing the room context
+            // Generate the multi-channel hybrid transaction record inside our financial ledger
             try {
                 String currency = "UGX";
-                String placeholderPhone = "0700000000"; // Can map to a model field if phone details are collected
-                paymentService.initializePayment(computedBill, currency, placeholderPhone);
-                System.out.println("💳 PAYMENT SERVICE: Initialized tracking entry for checkout code " + code + " | Bill: " + computedBill + " UGX");
+                String cleanPhone = (customerPhone != null && !customerPhone.trim().isEmpty()) ? customerPhone.trim() : "0700000000";
+                String methodNormalized = paymentMethod.toUpperCase();
+
+                paymentService.initializePayment(computedBill, currency, cleanPhone, methodNormalized);
+                System.out.println("💳 COTTAGE PAYMENT: Initialized tracking entry for checkout code " + code + " | Method: " + methodNormalized + " | Bill: " + computedBill + " UGX");
             } catch (Exception e) {
                 System.err.println("❌ BACKEND ERROR: Tracking payment creation entry failed: " + e.getMessage());
             }
