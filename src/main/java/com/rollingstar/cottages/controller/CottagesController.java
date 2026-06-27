@@ -4,6 +4,8 @@ import com.rollingstar.cottages.model.Cottage;
 import com.rollingstar.cottages.model.Booking;
 import com.rollingstar.cottages.repository.CottageRepository;
 import com.rollingstar.cottages.repository.BookingRepository;
+import com.rollingstar.cottages.service.PaymentService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -11,6 +13,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import jakarta.persistence.EntityManager;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -20,11 +23,17 @@ public class CottagesController {
 
     private final CottageRepository cottageRepository;
     private final BookingRepository bookingRepository;
+    private final PaymentService paymentService;
     private final EntityManager entityManager;
 
-    public CottagesController(CottageRepository cottageRepository, BookingRepository bookingRepository, EntityManager entityManager) {
+    @Autowired
+    public CottagesController(CottageRepository cottageRepository, 
+                              BookingRepository bookingRepository, 
+                              PaymentService paymentService,
+                              EntityManager entityManager) {
         this.cottageRepository = cottageRepository;
         this.bookingRepository = bookingRepository;
+        this.paymentService = paymentService;
         this.entityManager = entityManager;
     }
 
@@ -76,7 +85,7 @@ public class CottagesController {
                     }
                 }
             } catch (Exception e) {
-                System.err.println("⚠️ Error processing dashboard timeline parsing for room " + code + ": " + e.getMessage());
+                System.err.println(" Error processing dashboard timeline parsing for room " + code + ": " + e.getMessage());
             }
         }
 
@@ -86,7 +95,7 @@ public class CottagesController {
 
     @PostMapping("/cottages/toggle-status")
     public String toggleRoomStatus(@RequestParam("code") String code) {
-        // 🌟 BYPASS: Using explicit findByCode to completely clear the findById error
+        //  BYPASS: Using explicit findByCode to completely clear the findById error
         Optional<Cottage> optionalCottage = cottageRepository.findByCode(code);
         if (optionalCottage.isPresent()) {
             Cottage cottage = optionalCottage.get();
@@ -148,7 +157,7 @@ public class CottagesController {
                 walkInBooking.setGuests(String.valueOf(defaultCapacity)); 
 
                 bookingRepository.save(walkInBooking);
-                System.out.println("✨ POSTGRES CONFIRMATION: Managed Booking Entity inserted via Repository!");
+                System.out.println(" POSTGRES CONFIRMATION: Managed Booking Entity inserted via Repository!");
 
             } catch (Exception e) {
                 System.err.println("❌ BACKEND ERROR: Booking sync failed: " + e.getMessage());
@@ -167,21 +176,39 @@ public class CottagesController {
         if (optionalCottage.isPresent()) {
             Cottage cottage = optionalCottage.get();
             
+            BigDecimal computedBill = new BigDecimal("150000.00"); // Base baseline fallback cost
             try {
                 String[] parts = code.split("-");
                 String prefix = parts[0].trim().toUpperCase();  
                 int roomNum = Integer.parseInt(parts[1].trim()); 
 
                 String webRoomType = "";
-                if ("ST".equals(prefix)) webRoomType = "standard";
-                else if ("DL".equals(prefix)) webRoomType = "deluxe";
-                else if ("SU".equals(prefix)) webRoomType = "suite";
+                if ("ST".equals(prefix)) {
+                    webRoomType = "standard";
+                    computedBill = new BigDecimal("120000.00"); // Standard Room Rate
+                } else if ("DL".equals(prefix)) {
+                    webRoomType = "deluxe";
+                    computedBill = new BigDecimal("180000.00"); // Deluxe Room Rate
+                } else if ("SU".equals(prefix)) {
+                    webRoomType = "suite";
+                    computedBill = new BigDecimal("300000.00"); // Suite Room Rate
+                }
 
                 bookingRepository.deleteByRoomTypeIgnoreCaseAndRoomNumberAndStatusIgnoreCase(webRoomType, roomNum, "confirmed");
                 System.out.println("🗑️ POSTGRES CONFIRMATION: Cleaned up blocks via safely derived repository invocation.");
 
             } catch (Exception e) {
                 System.err.println("⚠️ Warning: Could not clear website table block: " + e.getMessage());
+            }
+
+            // Generate the PENDING transaction tracking entity record before clearing the room context
+            try {
+                String currency = "UGX";
+                String placeholderPhone = "0700000000"; // Can map to a model field if phone details are collected
+                paymentService.initializePayment(computedBill, currency, placeholderPhone);
+                System.out.println("💳 PAYMENT SERVICE: Initialized tracking entry for checkout code " + code + " | Bill: " + computedBill + " UGX");
+            } catch (Exception e) {
+                System.err.println("❌ BACKEND ERROR: Tracking payment creation entry failed: " + e.getMessage());
             }
 
             cottage.setGuest(null);
