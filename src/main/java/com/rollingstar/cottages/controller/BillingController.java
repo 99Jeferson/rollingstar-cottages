@@ -11,6 +11,7 @@ import com.rollingstar.cottages.repository.BillingRepository;
 import com.rollingstar.cottages.repository.InventoryItemRepository;
 import com.rollingstar.cottages.repository.TabItemRepository;
 import com.rollingstar.cottages.service.PaymentService;
+import com.rollingstar.cottages.service.MobileMoneyService; //  Injected your background telecom runner class
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -26,22 +27,27 @@ public class BillingController {
     private final InventoryItemRepository itemRepository;
     private final TabItemRepository tabItemRepository;
     private final PaymentService paymentService;
+    private final MobileMoneyService mobileMoneyService; // ✅ Declared service field
 
     @Autowired 
     public BillingController(BillingRepository tabRepository,
                              InventoryItemRepository itemRepository,
                              TabItemRepository tabItemRepository,
-                             PaymentService paymentService) {
+                             PaymentService paymentService,
+                             MobileMoneyService mobileMoneyService) { // ✅ Wired into constructor setup
         this.tabRepository = tabRepository;
         this.itemRepository = itemRepository;
         this.tabItemRepository = tabItemRepository;
         this.paymentService = paymentService;
+        this.mobileMoneyService = mobileMoneyService;
     }
     
     @GetMapping
     public String showBillingSystem(Model model) {
         List<BillingTab> activeTabs = tabRepository.findByStatus("OPEN");
         // Pulling in both SETTLED and PENDING_PAYMENT items to prevent active trackers from disappearing
+        //  Includes PENDING_PAYMENT tabs so they don't vanish from layout panels while waiting for a PIN
+        List<BillingTab> pendingTabs = tabRepository.findByStatus("PENDING_PAYMENT");
         List<BillingTab> settledTabs = tabRepository.findByStatus("SETTLED");
 
         BigDecimal totalSales = settledTabs.stream()
@@ -54,6 +60,7 @@ public class BillingController {
                 totalSales.divide(BigDecimal.valueOf(billsSettledCount), 2, RoundingMode.HALF_UP) : BigDecimal.ZERO;
 
         model.addAttribute("activeTabs", activeTabs);
+        model.addAttribute("pendingTabs", pendingTabs); //  Added parameter visibility mapping
         model.addAttribute("settledTabs", settledTabs);
         model.addAttribute("menuItems", itemRepository.findAll());
         model.addAttribute("totalSales", totalSales);
@@ -95,30 +102,55 @@ public class BillingController {
             }
 
             BigDecimal billAmount = (tab.getTotalAmount() != null) ? tab.getTotalAmount() : BigDecimal.ZERO;
-            String cleanPhone = (customerPhone != null && !customerPhone.trim().isEmpty()) ? customerPhone.trim() : "0700000000";
             String methodNormalized = paymentMethod.toUpperCase();
 
-            // 1. Initialize our hybrid audit ledger pipeline tracker
-            try {
-                paymentService.initializePayment(billAmount, "UGX", cleanPhone, methodNormalized);
-                System.out.println("💳 BILLING INTEGRATION: Created transaction entry for Tab ID " + tabId + " | Method: " + methodNormalized + " | Amount: " + billAmount + " UGX");
-            } catch (Exception e) {
-                System.err.println("❌ BACKEND ERROR: Tracking ledger update failed: " + e.getMessage());
+            // 📱 TARGET INTEGRATION METRICS: LOUNGE MOBILE MONEY ROUTE
+            if ("MOBILE_MONEY".equals(methodNormalized)) {
+                // 1. Sanitize user input phone strings securely into 256 format strings
+                String cleanPhone = sanitizeUgandanPhoneNumber(customerPhone);
+                if (cleanPhone == null) {
+                    System.err.println(" VALIDATION FAILURE: Aborting Bar STK push invocation. Phone format invalid.");
+                    return "redirect:/billing?error=invalid_phone";
+                }
+
+                // 2. Put the lounge bar bill into PENDING_PAYMENT status buffer space
+                tab.setStatus("PENDING_PAYMENT");
+                tabRepository.save(tab);
+
+                // 3. Initialize dynamic accounting audit trail ledger
+                try {
+                    paymentService.initializePayment(billAmount, "UGX", cleanPhone, methodNormalized);
+                } catch (Exception e) {
+                    System.err.println(" Warning: Ledger transaction history tracking failed: " + e.getMessage());
+                }
+
+                // 4. Fire the remote API payload request to prompt customer's handset device asynchronously
+                try {
+                    // Custom structured key code matching webhooks: "BAR-TAB-[Id]"
+                    String barTxCode = "BAR-TAB-" + tabId;
+                    mobileMoneyService.triggerPushPrompt(cleanPhone, billAmount.doubleValue(), barTxCode);
+                    System.out.println(" LOUNGE MOMO PROMPT: Dispatched STK Push for Tab ID: " + tabId + " | Phone: " + cleanPhone);
+                } catch (Exception e) {
+                    System.err.println("❌ BACKEND ERROR: Target connection to telecom outbound framework failed: " + e.getMessage());
+                }
+
+                return "redirect:/billing?success=momo_prompted";
             }
 
-            // 2. Determine state transition rule based on selection
-            if ("CASH".equals(methodNormalized)) {
-                tab.setStatus("SETTLED");
-                tab.setSettledBy(authentication.getName()); 
-                tab.setSettledAt(LocalDateTime.now());
-                System.out.println("💰 CASH COLLECTION: Tab ID " + tabId + " instantly archived as SETTLED.");
-            } else {
-                // Mobile Money starts as PENDING. Keep tab alive until Webhook confirmation arrives.
-                tab.setStatus("PENDING_PAYMENT");
-                System.out.println("📱 MOBILE MONEY: Tab ID " + tabId + " held in intermediate PENDING_PAYMENT buffer state.");
+            // 💵 STANDARD CASH COLLECTION TERMINATION LAYER
+            String cleanCashPhone = (customerPhone != null && !customerPhone.trim().isEmpty()) ? customerPhone.trim() : "0700000000";
+            try {
+                paymentService.initializePayment(billAmount, "UGX", cleanCashPhone, methodNormalized);
+                System.out.println("💳 BILLING INTEGRATION: Created cash entry for Tab ID " + tabId + " | Amount: " + billAmount + " UGX");
+            } catch (Exception e) {
+                System.err.println("❌ BACKEND ERROR: Tracking cash log allocation failed: " + e.getMessage());
             }
-            
+
+            tab.setStatus("SETTLED");
+            tab.setSettledBy(authentication.getName()); 
+            tab.setSettledAt(LocalDateTime.now());
             tabRepository.save(tab);
+            System.out.println(" CASH COLLECTION: Tab ID " + tabId + " instantly archived as SETTLED.");
         }
         return "redirect:/billing";
     }
@@ -138,10 +170,9 @@ public class BillingController {
 
         if (tab != null && menuItem != null && quantity != null && quantity > 0) {
             
-            //  INVENTORY PROTECTION GUARDRAIL: Check availability before processing sale
+            // INVENTORY PROTECTION GUARDRAIL: Check availability before processing sale
             int currentStock = (menuItem.getStockQuantity() != null) ? menuItem.getStockQuantity() : 0;
             if (currentStock < quantity) {
-                // Return immediately with an error parameter if staff tries to oversell stock pool
                 return "redirect:/billing?error=low_stock";
             }
 
@@ -168,14 +199,13 @@ public class BillingController {
                 tabItemRepository.save(orderLine);
             }
 
-            //  STORE SYNCHRONIZATION: Subtract the sold items from the inventory pool
+            // STORE SYNCHRONIZATION: Subtract the sold items from the inventory pool
             menuItem.setStockQuantity(currentStock - quantity);
             itemRepository.save(menuItem);
 
             BigDecimal currentTotal = (tab.getTotalAmount() == null) ? BigDecimal.ZERO : tab.getTotalAmount();
             tab.setTotalAmount(currentTotal.add(addedSubtotal));
 
-            // Anti-Crash Guardrail: Satisfy database non-null constraints on legacy records
             if (tab.getReferenceId() == null) {
                 tab.setReferenceId("REF-" + System.currentTimeMillis());
             }
@@ -186,5 +216,22 @@ public class BillingController {
             tabRepository.save(tab); 
         }
         return "redirect:/billing";
+    }
+
+    /**
+     * Parsing utility cleaner checking structural accuracy for Ugandan wallet codes
+     */
+    private String sanitizeUgandanPhoneNumber(String phone) {
+        if (phone == null) return null;
+        String digits = phone.replaceAll("\\D+", ""); 
+        
+        if (digits.startsWith("0") && digits.length() == 10) {
+            return "256" + digits.substring(1);
+        } else if (digits.startsWith("256") && digits.length() == 12) {
+            return digits;
+        } else if (digits.length() == 9 && (digits.startsWith("77") || digits.startsWith("78") || digits.startsWith("70") || digits.startsWith("75") || digits.startsWith("74") || digits.startsWith("79") || digits.startsWith("76"))) {
+            return "256" + digits;
+        }
+        return null; 
     }
 }

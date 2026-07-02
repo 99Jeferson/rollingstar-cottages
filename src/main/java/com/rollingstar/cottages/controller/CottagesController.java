@@ -1,224 +1,55 @@
 package com.rollingstar.cottages.controller;
 
-import com.rollingstar.cottages.model.Cottage;
 import com.rollingstar.cottages.model.Booking;
+import com.rollingstar.cottages.model.Cottage;
+import com.rollingstar.cottages.service.BookingService;
 import com.rollingstar.cottages.repository.CottageRepository;
-import com.rollingstar.cottages.repository.BookingRepository;
-import com.rollingstar.cottages.service.PaymentService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
-import jakarta.persistence.EntityManager;
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
 
-@Controller
+@RestController
+@RequestMapping("/api/v1/system-cottages")
 public class CottagesController {
 
-    private final CottageRepository cottageRepository;
-    private final BookingRepository bookingRepository;
-    private final PaymentService paymentService;
-    private final EntityManager entityManager;
+    @Autowired 
+    private CottageRepository cottageRepository;
+    
+    @Autowired 
+    private BookingService bookingService;
 
-    @Autowired
-    public CottagesController(CottageRepository cottageRepository, 
-                              BookingRepository bookingRepository, 
-                              PaymentService paymentService,
-                              EntityManager entityManager) {
-        this.cottageRepository = cottageRepository;
-        this.bookingRepository = bookingRepository;
-        this.paymentService = paymentService;
-        this.entityManager = entityManager;
+    // Desktop UI Filter 1: Get rooms by type (e.g., /api/v1/system-cottages/filter/type?roomType=Deluxe)
+    @GetMapping("/filter/type")
+    public ResponseEntity<List<Cottage>> getCottagesByType(@RequestParam String roomType) {
+        return ResponseEntity.ok(cottageRepository.findByTypeIgnoreCase(roomType));
     }
 
-    @GetMapping("/cottages")
-    public String showCottagesDashboard(Model model) {
-        entityManager.clear();
-
-        List<Cottage> cottageList = cottageRepository.findAll();
-        LocalDate today = LocalDate.now();
-
-        for (Cottage cottage : cottageList) {
-            String code = cottage.getCode(); 
-            if (code == null || !code.contains("-")) continue;
-
-            try {
-                String[] parts = code.split("-");
-                String prefix = parts[0].trim().toUpperCase();  
-                int roomNum = Integer.parseInt(parts[1].trim()); 
-
-                String webRoomType = "";
-                if ("ST".equals(prefix)) webRoomType = "standard";
-                else if ("DL".equals(prefix)) webRoomType = "deluxe";
-                else if ("SU".equals(prefix)) webRoomType = "suite";
-
-                List<Booking> activeWebBookings = bookingRepository.findByRoomTypeAndRoomNumberAndStatusIgnoreCase(webRoomType, roomNum, "confirmed");
-
-                // Set default base state
-                cottage.setStatus("AVAILABLE"); 
-                cottage.setGuest(null);
-
-                for (Booking webBooking : activeWebBookings) {
-                    LocalDate checkIn = webBooking.getCheckInDate(); 
-                    LocalDate checkOut = webBooking.getCheckOutDate();
-
-                    if (checkIn == null || checkOut == null) continue;
-
-                    boolean isCurrentGuest = (!today.isBefore(checkIn)) && (!today.isAfter(checkOut));
-                    boolean isUpcomingGuest = checkIn.isAfter(today);
-
-                    if (isCurrentGuest) {
-                        cottage.setStatus("OCCUPIED"); 
-                        cottage.setGuest(webBooking.getGuestName() + " 🌐 [LIVE NOW]");
-                        break; 
-                    } 
-                    else if (isUpcomingGuest) {
-                        cottage.setStatus("OCCUPIED"); 
-                        cottage.setGuest(webBooking.getGuestName() + " 🌐 [Arriving: " + checkIn + "]");
-                        break; 
-                    }
-                }
-            } catch (Exception e) {
-                System.err.println(" Error processing dashboard timeline parsing for room " + code + ": " + e.getMessage());
-            }
-        }
-
-        model.addAttribute("cottages", cottageList);
-        return "cottages";
+    // Desktop UI Filter 2: Get rooms under a budget threshold
+    @GetMapping("/filter/price")
+    public ResponseEntity<List<Cottage>> getCottagesByMaxPrice(@RequestParam BigDecimal maxPrice) {
+        return ResponseEntity.ok(cottageRepository.findByRateLessThanEqual(maxPrice));
     }
 
-    @PostMapping("/cottages/toggle-status")
-    public String toggleRoomStatus(@RequestParam("code") String code) {
-        //  BYPASS: Using explicit findByCode to completely clear the findById error
-        Optional<Cottage> optionalCottage = cottageRepository.findByCode(code);
-        if (optionalCottage.isPresent()) {
-            Cottage cottage = optionalCottage.get();
-            
-            String currentStatus = cottage.getStatus(); 
-            
-            if ("AVAILABLE".equalsIgnoreCase(currentStatus)) {
-                cottage.setStatus("MAINTENANCE"); 
-                cottage.setGuest(null);
-            } else {
-                cottage.setStatus("AVAILABLE"); 
-            }
-            cottageRepository.save(cottage);
-        }
-        return "redirect:/cottages";
+    // Web Endpoint: Initial online reservation processing
+    @PostMapping("/reserve/online")
+    public ResponseEntity<Booking> createOnlineCommitmentReservation(@RequestBody Booking booking) {
+        return ResponseEntity.ok(bookingService.processOnlineCommitment(booking));
     }
 
-    @org.springframework.transaction.annotation.Transactional
-    @PostMapping("/cottages/check-in")
-    public String checkInGuest(@RequestParam("code") String code, @RequestParam("guestName") String guestName) {
-        System.out.println("📥 FRONT DESK EVENT: Processing check-in for cottage: " + code + " | Guest: " + guestName);
-        
-        Optional<Cottage> optionalCottage = cottageRepository.findByCode(code);
-        if (optionalCottage.isPresent() && guestName != null && !guestName.trim().isEmpty()) {
-            Cottage cottage = optionalCottage.get();
-            
-            cottage.setGuest(guestName);
-            cottage.setStatus("OCCUPIED"); 
-            cottageRepository.save(cottage);
-
-            try {
-                String[] parts = code.split("-");
-                String prefix = parts[0].trim().toUpperCase();  
-                int roomNum = Integer.parseInt(parts[1].trim()); 
-
-                String webRoomType = "";
-                int defaultCapacity = 2; 
-
-                if ("ST".equals(prefix)) {
-                    webRoomType = "standard";
-                    defaultCapacity = 2;
-                } else if ("DL".equals(prefix)) {
-                    webRoomType = "deluxe";
-                    defaultCapacity = 3;
-                } else if ("SU".equals(prefix)) {
-                    webRoomType = "suite";
-                    defaultCapacity = 4;
-                }
-
-                Booking walkInBooking = new Booking();
-                walkInBooking.setGuestName(guestName + " 🏢 [Desk Walk-In]");
-                walkInBooking.setEmail("frontdesk@rollingstar.com");
-                walkInBooking.setRoomType(webRoomType);
-                walkInBooking.setRoomNumber(roomNum);
-                walkInBooking.setStatus("confirmed");
-                walkInBooking.setCheckInDate(LocalDate.now());
-                walkInBooking.setCheckOutDate(LocalDate.now().plusDays(1));
-
-                walkInBooking.setGuests(String.valueOf(defaultCapacity)); 
-
-                bookingRepository.save(walkInBooking);
-                System.out.println(" POSTGRES CONFIRMATION: Managed Booking Entity inserted via Repository!");
-
-            } catch (Exception e) {
-                System.err.println("❌ BACKEND ERROR: Booking sync failed: " + e.getMessage());
-                throw e; 
-            }
-        }
-        return "redirect:/cottages";
+    // Reception Desk Check-in: Capture National ID details
+    @PatchMapping("/check-in/{bookingId}")
+    public ResponseEntity<Booking> finalizeCheckInArrival(
+            @PathVariable Long bookingId, 
+            @RequestParam String nin) {
+        return ResponseEntity.ok(bookingService.completePhysicalCheckIn(bookingId, nin));
     }
 
-    @org.springframework.transaction.annotation.Transactional 
-    @PostMapping("/cottages/check-out")
-    public String checkOutGuest(@RequestParam("code") String code,
-                                @RequestParam(defaultValue = "CASH") String paymentMethod,
-                                @RequestParam(required = false) String customerPhone) {
-        System.out.println("📤 FRONT DESK EVENT: Attempting check-out for cottage: " + code + " | Method: " + paymentMethod);
-        
-        Optional<Cottage> optionalCottage = cottageRepository.findByCode(code);
-        if (optionalCottage.isPresent()) {
-            Cottage cottage = optionalCottage.get();
-            
-            BigDecimal computedBill = new BigDecimal("150000.00"); // Base baseline fallback cost
-            try {
-                String[] parts = code.split("-");
-                String prefix = parts[0].trim().toUpperCase();  
-                int roomNum = Integer.parseInt(parts[1].trim()); 
-
-                String webRoomType = "";
-                if ("ST".equals(prefix)) {
-                    webRoomType = "standard";
-                    computedBill = new BigDecimal("120000.00"); // Standard Room Rate
-                } else if ("DL".equals(prefix)) {
-                    webRoomType = "deluxe";
-                    computedBill = new BigDecimal("180000.00"); // Deluxe Room Rate
-                } else if ("SU".equals(prefix)) {
-                    webRoomType = "suite";
-                    computedBill = new BigDecimal("300000.00"); // Suite Room Rate
-                }
-
-                bookingRepository.deleteByRoomTypeIgnoreCaseAndRoomNumberAndStatusIgnoreCase(webRoomType, roomNum, "confirmed");
-                System.out.println("🗑️ POSTGRES CONFIRMATION: Cleaned up blocks via safely derived repository invocation.");
-
-            } catch (Exception e) {
-                System.err.println("⚠️ Warning: Could not clear website table block: " + e.getMessage());
-            }
-
-            // Generate the multi-channel hybrid transaction record inside our financial ledger
-            try {
-                String currency = "UGX";
-                String cleanPhone = (customerPhone != null && !customerPhone.trim().isEmpty()) ? customerPhone.trim() : "0700000000";
-                String methodNormalized = paymentMethod.toUpperCase();
-
-                paymentService.initializePayment(computedBill, currency, cleanPhone, methodNormalized);
-                System.out.println("💳 COTTAGE PAYMENT: Initialized tracking entry for checkout code " + code + " | Method: " + methodNormalized + " | Bill: " + computedBill + " UGX");
-            } catch (Exception e) {
-                System.err.println("❌ BACKEND ERROR: Tracking payment creation entry failed: " + e.getMessage());
-            }
-
-            cottage.setGuest(null);
-            cottage.setStatus("AVAILABLE"); 
-            cottageRepository.save(cottage);
-        }
-        return "redirect:/cottages";
+    // Billing Engine Endpoint: Issue printable receipt string text
+    @GetMapping("/bookings/{bookingId}/receipt")
+    public ResponseEntity<String> printReceipt(@PathVariable Long bookingId) {
+        return ResponseEntity.ok(bookingService.generateElectronicReceipt(bookingId));
     }
 }

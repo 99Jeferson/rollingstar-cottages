@@ -1,16 +1,16 @@
 package com.rollingstar.cottages.controller;
 
-import com.rollingstar.cottages.repository.StaffRepository;
-import com.rollingstar.cottages.repository.CottageRepository;
-import com.rollingstar.cottages.repository.PaymentRepository; 
-import com.rollingstar.cottages.repository.InventoryItemRepository;
+import java.time.LocalDate;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 
-import java.time.LocalDate;
-import java.util.List;
+import com.rollingstar.cottages.repository.CottageRepository;
+import com.rollingstar.cottages.repository.InventoryItemRepository;
+import com.rollingstar.cottages.repository.PaymentRepository;
+import com.rollingstar.cottages.repository.StaffRepository;
 
 @Controller
 public class DashboardController {

@@ -35,6 +35,7 @@
         .status-glow { position: absolute; top: 0; left: 0; width: 100%; height: 5px; }
         .status-glow-AVAILABLE, .status-glow-available { background: #10b981; box-shadow: 0 2px 10px #10b981; }
         .status-glow-OCCUPIED, .status-glow-occupied { background: #f59e0b; box-shadow: 0 2px 10px #f59e0b; }
+        .status-glow-PENDING_PAYMENT, .status-glow-pending_payment { background: #8b5cf6; box-shadow: 0 2px 10px #8b5cf6; }
         .status-glow-MAINTENANCE, .status-glow-maintenance { background: #ef4444; box-shadow: 0 2px 10px #ef4444; }
 
         .card-meta { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; }
@@ -42,11 +43,12 @@
         .status-badge { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 800; text-transform: uppercase; }
         .status-badge-AVAILABLE, .status-badge-available { background: rgba(16, 185, 129, 0.15); color: #10b981; }
         .status-badge-OCCUPIED, .status-badge-occupied { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+        .status-badge-PENDING_PAYMENT, .status-badge-pending_payment { background: rgba(139, 92, 246, 0.15); color: #a78bfa; }
         .status-badge-MAINTENANCE, .status-badge-maintenance { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
 
         .room-type { font-size: 14px; color: #9ca3af; margin-bottom: 12px; font-weight: 500; }
         .price-tag { font-size: 18px; font-weight: 700; color: #a78bfa; margin-bottom: 15px; }
-        .guest-info { font-size: 13px; color: #cbd5e1; background: rgba(255,255,255,0.05); padding: 8px 12px; border-radius: 8px; border-left: 3px solid #f59e0b; margin-bottom: 15px; }
+        .guest-info { font-size: 13px; color: #cbd5e1; background: rgba(255,255,255,0.05); padding: 8px 12px; border-radius: 8px; border-left: 3px solid #f59e0b; margin-bottom: 15px; line-height: 1.4; word-break: break-word; }
 
         /* Forms & Buttons */
         .card-actions { display: flex; gap: 10px; margin-top: auto; }
@@ -57,14 +59,17 @@
         .btn-card.secondary:hover { background: #4b5563; }
         .btn-add { background: #f59e0b; color: #0b0f19; font-weight: 700; padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
 
-        /* Modal Background Blur Overlay */
+        /* Modal Layout */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(4px); display: none; justify-content: center; align-items: center; z-index: 1000; }
-        .modal-content { background: #111827; border: 2px solid #8b5cf6; border-radius: 16px; width: 400px; padding: 30px; box-shadow: 0 20px 40px rgba(0,0,0,0.6); }
+        .modal-content { background: #111827; border: 2px solid #8b5cf6; border-radius: 16px; width: 420px; padding: 30px; box-shadow: 0 20px 40px rgba(0,0,0,0.6); }
         .modal-content h3 { color: #f59e0b; margin-bottom: 15px; font-size: 20px; }
-        .modal-content label { display: block; margin-bottom: 8px; color: #9ca3af; font-size: 14px; }
-        .modal-content input { width: 100%; padding: 12px; background: #1f2937; border: 1px solid #374151; border-radius: 8px; color: #fff; margin-bottom: 20px; font-size: 15px; }
-        .modal-buttons { display: flex; gap: 12px; }
-        .btn-modal { flex: 1; padding: 12px; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; }
+        .modal-content label { display: block; margin-bottom: 6px; color: #9ca3af; font-size: 13px; margin-top: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        .modal-content input, .modal-content select { width: 100%; padding: 12px; background: #1f2937; border: 1px solid #374151; border-radius: 8px; color: #fff; margin-bottom: 5px; font-size: 15px; outline: none; transition: border-color 0.2s; }
+        .modal-content input:focus, .modal-content select:focus { border-color: #8b5cf6; }
+        .modal-content select option { background: #111827; }
+        .modal-buttons { display: flex; gap: 12px; margin-top: 24px; }
+        .btn-modal { flex: 1; padding: 12px; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; transition: opacity 0.2s; }
+        .btn-modal:hover { opacity: 0.9; }
         .btn-modal.confirm { background: #10b981; color: #fff; }
         .btn-modal.cancel { background: #374151; color: #fff; }
     </style>
@@ -73,10 +78,6 @@
 
     <form id="toggleStatusForm" th:action="@{/cottages/toggle-status}" method="POST" style="display:none;">
         <input type="hidden" name="code" id="toggleCodeInput">
-    </form>
-
-    <form id="checkOutForm" th:action="@{/cottages/check-out}" method="POST" style="display:none;">
-        <input type="hidden" name="code" id="checkOutCodeInput">
     </form>
 
     <aside class="sidebar">
@@ -88,8 +89,8 @@
             <li class="nav-item"><a th:href="@{/dashboard}">Dashboard Overview</a></li>
             <li class="nav-item active"><a th:href="@{/cottages}">Cottages Configuration</a></li>
             <li class="nav-item"><a th:href="@{/billing}">Billing &amp; Invoices</a></li>
-            <li class="nav-item"><a href="#">Inventory Tracker</a></li>
-            <li class="nav-item"><a href="#">Staffing Management</a></li>
+            <li class="nav-item"><a th:href="@{/inventory}">Inventory Tracker</a></li>
+            <li class="nav-item"><a th:href="@{/staffing}">Staffing Management</a></li>
             <li class="nav-item" sec:authorize="hasAnyAuthority('ROLE_BOSS', 'BOSS')">
                 <a th:href="@{/auditing}" style="border-left: 4px dashed #ef4444; color: #f87171;">🛡️ Security Audits</a>
             </li>
@@ -118,10 +119,10 @@
                     </div>
                     
                     <div class="room-type" th:text="${room.type}">Room Type Specification</div>
-                    <div class="price-tag" th:text="|UGX ${#numbers.formatInteger(room.rate, 3, 'COMMA')} / Night|">UGX 0 / Night</div>
+                    <div class="price-tag" th:text="${room.rate != null} ? 'UGX ' + ${#numbers.formatDecimal(room.rate, 1, 'COMMA', 0, 'POINT')} + ' / Night' : 'UGX 0 / Night'">UGX 0 / Night</div>
                     
-                    <div class="guest-info" th:if="${room.guest != null}">
-                        👤 Occupant: <strong th:text="${room.guest}">Guest Name</strong>
+                    <div class="guest-info" th:if="${room.guest != null and room.guest != ''}">
+                        👤 <span th:text="${room.guest}">Guest Name Details</span>
                     </div>
 
                     <div class="card-actions">
@@ -140,21 +141,25 @@
                     </div>
                 </div>
 
+                <div th:if="${#lists.isEmpty(cottages)}" style="grid-column: 1 / -1; text-align: center; color: #9ca3af; padding: 40px;">
+                    No registered cottages found in the system database.
+                </div>
+
             </div>
         </section>
     </main>
 
-    <div class="modal-overlay" id="checkInModal">
+    <div class="modal-overlay" id="operationsModal">
         <div class="modal-content">
-            <h3 id="modalTitle">Cottage Check-In</h3>
-            <form th:action="@{/cottages/check-in}" method="POST">
+            <h3 id="modalTitle">Cottage Operation</h3>
+            <form id="modalForm" method="POST">
+                <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
                 <input type="hidden" name="code" id="modalCodeInput">
-                <div id="modalFormBody">
-                    <label for="guestName">Enter Customer Name:</label>
-                    <input type="text" name="guestName" id="guestName" placeholder="e.g., Alon Mwesigwa" required>
-                </div>
+                
+                <div id="modalFieldsContainer"></div>
+                
                 <div class="modal-buttons">
-                    <button type="submit" class="btn-modal confirm" id="modalSubmitBtn">Check In</button>
+                    <button type="submit" class="btn-modal confirm" id="modalSubmitBtn">Execute</button>
                     <button type="button" class="btn-modal cancel" onclick="closeModal()">Cancel</button>
                 </div>
             </form>
@@ -162,43 +167,118 @@
     </div>
 
     <script>
-        // 1. Instantly submits the backend maintenance switcher form
         function handleToggleStatus(button) {
             const code = button.getAttribute('data-code');
             document.getElementById('toggleCodeInput').value = code;
             document.getElementById('toggleStatusForm').submit();
         }
 
-        // 2. Evaluates the cottage room state and controls the context workspace presentation
         function handleManageRoom(button) {
             const code = button.getAttribute('data-code');
             const status = button.getAttribute('data-status');
             
+            const modal = document.getElementById('operationsModal');
+            const form = document.getElementById('modalForm');
+            const title = document.getElementById('modalTitle');
+            const codeInput = document.getElementById('modalCodeInput');
+            const container = document.getElementById('modalFieldsContainer');
+            const submitBtn = document.getElementById('modalSubmitBtn');
+            
+            codeInput.value = code;
+            container.innerHTML = ''; // Clear context tracking container buffer
+
             if (status === 'OCCUPIED') {
-                if (confirm('Cottage ' + code + ' is currently occupied. Would you like to process Check-Out?')) {
-                    document.getElementById('checkOutCodeInput').value = code;
-                    document.getElementById('checkOutForm').submit();
-                }
+                title.innerText = 'Check-Out Cottage ' + code;
+                form.action = '/cottages/check-out';
+                submitBtn.innerText = 'Process Checkout';
+                submitBtn.className = 'btn-modal confirm';
+
+                container.innerHTML = `
+                    <label for="paymentMethod">Select Settlement Method:</label>
+                    <select name="paymentMethod" id="paymentMethod" onchange="toggleModalPhoneField()" required>
+                        <option value="CASH" selected>CASH</option>
+                        <option value="MOBILE_MONEY">MOBILE MONEY</option>
+                    </select>
+                    
+                    <div id="phoneFieldWrapper" style="display: none;">
+                        <label for="customerPhone">Customer Mobile Money Number:</label>
+                        <input type="text" name="customerPhone" id="customerPhone" placeholder="e.g., 0771234567">
+                    </div>
+                `;
+                modal.style.display = 'flex';
+
+            } else if (status === 'PENDING_PAYMENT') {
+                // Handle arrival from online reservation workflow
+                title.innerText = 'Verify & Check-In Online Booking: ' + code;
+                form.action = '/cottages/check-in';
+                submitBtn.innerText = 'Complete Physical Arrival';
+                submitBtn.className = 'btn-modal confirm';
+
+                container.innerHTML = `
+                    <p style="font-size: 13px; color: #a78bfa; margin-bottom: 10px; border-left: 2px solid #f59e0b; padding-left: 8px;">
+                        Commitment fee paid via website. Collect full identification details below to complete arrival registration.
+                    </p>
+                    <label for="guestName">Full Customer Name:</label>
+                    <input type="text" name="guestName" id="guestName" placeholder="e.g., Alon Mwesigwa" required>
+
+                    <label for="guestPhone">Primary Phone Number:</label>
+                    <input type="text" name="guestPhone" id="guestPhone" placeholder="e.g., 0772000000" required>
+
+                    <label for="nin">National Identification Number (NIN):</label>
+                    <input type="text" name="nin" id="nin" placeholder="e.g., CM0000000XXXXX" required>
+                `;
+                modal.style.display = 'flex';
+                document.getElementById('guestName').focus();
+
             } else if (status === 'MAINTENANCE') {
                 alert('This room is currently down for maintenance. Please toggle its status back to Available first.');
             } else {
-                // Open the modal for Check-In
-                document.getElementById('modalTitle').innerText = 'Check-In Cottage ' + code;
-                document.getElementById('modalCodeInput').value = code;
-                document.getElementById('checkInModal').style.display = 'flex';
+                // Standard Walk-In Check-In Workflow Flow
+                title.innerText = 'Walk-In Check-In: Cottage ' + code;
+                form.action = '/cottages/check-in';
+                submitBtn.innerText = 'Complete Check-In';
+                submitBtn.className = 'btn-modal confirm';
+
+                container.innerHTML = `
+                    <label for="guestName">Full Customer Name:</label>
+                    <input type="text" name="guestName" id="guestName" placeholder="e.g., Alon Mwesigwa" required>
+
+                    <label for="guestPhone">Primary Phone Number:</label>
+                    <input type="text" name="guestPhone" id="guestPhone" placeholder="e.g., 0772000000" required>
+
+                    <label for="nin">National Identification Number (NIN):</label>
+                    <input type="text" name="nin" id="nin" placeholder="e.g., CM0000000XXXXX" required>
+                `;
+                modal.style.display = 'flex';
                 document.getElementById('guestName').focus();
             }
         }
 
-        function closeModal() {
-            document.getElementById('checkInModal').style.display = 'none';
+        function toggleModalPhoneField() {
+            const methodSelect = document.getElementById('paymentMethod');
+            const phoneWrapper = document.getElementById('phoneFieldWrapper');
+            const phoneInput = document.getElementById('customerPhone');
+            
+            if (methodSelect && phoneWrapper && phoneInput) {
+                if (methodSelect.value === 'MOBILE_MONEY') {
+                    phoneWrapper.style.display = 'block';
+                    phoneInput.setAttribute('required', 'true');
+                    phoneInput.focus();
+                } else {
+                    phoneWrapper.style.display = 'none';
+                    phoneInput.removeAttribute('required');
+                    phoneInput.value = '';
+                }
+            }
         }
 
-        // 🔄 Real-Time Dashboard Synchronizer Loop
-        // Automatically fetches PostgreSQL background changes without blinking or reloading your page view
+        function closeModal() {
+            document.getElementById('operationsModal').style.display = 'none';
+        }
+
+        // 🔄 Real-Time Dashboard Synchronizer Loop (Every 8 seconds)
         setInterval(() => {
-            // Check if user is currently configuring a check-in modal to prevent layout disruption
-            const modalIsVisible = document.getElementById('checkInModal').style.display === 'flex';
+            const modalIsVisible = document.getElementById('operationsModal').style.display === 'flex';
             if (modalIsVisible) return; 
 
             fetch(window.location.href)
@@ -215,7 +295,7 @@
                     }
                 })
                 .catch(err => console.warn('Dashboard background sync temporarily delayed:', err));
-        }, 8000); // Polls every 8 seconds for new web reservation entries
+        }, 8000);
     </script>
 </body>
 </html>

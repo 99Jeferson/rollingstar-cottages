@@ -9,8 +9,14 @@ import java.util.List;
 public interface StaffRepository extends JpaRepository<Staff, Long> {
 
     /**
-     * 🔍 This method must be explicitly declared here so the 
+     * This method must be explicitly declared here so the 
      * StaffController can use it to fetch sorted workspace records.
      */
     List<Staff> findAllByOrderByEmploymentStatusAscFullNameAsc();
+
+    /**
+     * Computes active shift headcount directly at the database layer.
+     * Adding this removes the compilation error in DashboardController.
+     */
+    long countByEmploymentStatus(String status);
 }

@@ -3,16 +3,19 @@ package com.rollingstar.cottages.service;
 import com.rollingstar.cottages.model.User;
 import com.rollingstar.cottages.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
+
 @Service("customUserDetailsService")
 public class CustomUserDetailsService implements UserDetailsService {
 
     @Autowired
-    private UserRepository userRepository; // 👈 Swapped out JdbcTemplate for type-safe JPA ORM
+    private UserRepository userRepository;
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
@@ -23,10 +26,13 @@ public class CustomUserDetailsService implements UserDetailsService {
             throw new UsernameNotFoundException("User not found with username: " + username);
         }
 
-        // Return the user details using the authentic BCrypt database hash string directly
+        // Build a direct authority mapping from the database role string
+        SimpleGrantedAuthority authority = new SimpleGrantedAuthority(domainUser.getRole());
+
+        // Return the user details using authentic BCrypt database hashes and strict authorities
         return org.springframework.security.core.userdetails.User.withUsername(domainUser.getUsername())
-                   .password(domainUser.getPasswordHash()) // 👈 FIXED: No more "{noop}" prefix!
-                   .roles(domainUser.getRole()) 
+                   .password(domainUser.getPasswordHash()) 
+                   .authorities(Collections.singleton(authority)) //  FIXED: Bypasses automatic "ROLE_" double-prefixing bugs
                    .build();
     }
 }

@@ -288,7 +288,7 @@
             font-size: 14px;
         }
 
-        /* 👑 Bulletproof Gmail-Style Print Engine System Rules */
+        /* Bulletproof Gmail-Style Print Engine System Rules */
         @media print {
             html, body {
                 background-color: #ffffff !important;
@@ -388,7 +388,7 @@
             <li class="nav-item"><a th:href="@{/inventory}">Inventory Tracker</a></li>
             <li class="nav-item"><a th:href="@{/staffing}">Staffing Management</a></li>
             
-            <li class="nav-item" sec:authorize="hasRole('BOSS')">
+            <li class="nav-item" sec:authorize="hasAnyAuthority('ROLE_BOSS', 'BOSS')">
                 <a th:href="@{/auditing}" style="border-left: 4px dashed #ef4444; color: #f87171;">🛡️ Security Audits</a>
             </li>
             
@@ -418,15 +418,15 @@
             <div class="metrics-grid">
                 <div class="metric-card accent-gold">
                     <span class="metric-title">Total Settled Sales</span>
-                    <span class="metric-value" th:text="'UGX ' + ${#numbers.formatDecimal(totalSales, 1, 'COMMA', 2, 'POINT')}">UGX 0.00</span>
+                    <span class="metric-value" th:text="${totalSales != null} ? 'UGX ' + ${#numbers.formatDecimal(totalSales, 1, 'COMMA', 2, 'POINT')} : 'UGX 0.00'">UGX 0.00</span>
                 </div>
                 <div class="metric-card">
                     <span class="metric-title">Bills Settled Today</span>
-                    <span class="metric-value" style="color: #10b981;" th:text="${billsSettledCount}">0</span>
+                    <span class="metric-value" style="color: #10b981;" th:text="${billsSettledCount != null ? billsSettledCount : 0}">0</span>
                 </div>
                 <div class="metric-card accent-purple">
                     <span class="metric-title">Average Order Ticket</span>
-                    <span class="metric-value" th:text="'UGX ' + ${#numbers.formatDecimal(averageSales, 1, 'COMMA', 2, 'POINT')}">UGX 0.00</span>
+                    <span class="metric-value" th:text="${averageSales != null} ? 'UGX ' + ${#numbers.formatDecimal(averageSales, 1, 'COMMA', 2, 'POINT')} : 'UGX 0.00'">UGX 0.00</span>
                 </div>
             </div>
 
@@ -452,8 +452,11 @@
                     <tbody>
                         <tr th:each="tab : ${activeTabs}">
                             <td><strong th:text="${tab.tabName}">Table reference</strong></td>
-                            <td><span style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight:700;">OPEN</span></td>
-                            <td th:text="'UGX ' + ${#numbers.formatDecimal(tab.totalAmount, 1, 'COMMA', 2, 'POINT')}">UGX 0.00</td>
+                            <td>
+                                <span th:if="${tab.status == 'OPEN'}" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight:700;">OPEN</span>
+                                <span th:if="${tab.status == 'PENDING_PAYMENT'}" style="background: rgba(139, 92, 246, 0.15); color: #a78bfa; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight:700;">PENDING MOMO</span>
+                            </td>
+                            <td th:text="${tab.totalAmount != null} ? 'UGX ' + ${#numbers.formatDecimal(tab.totalAmount, 1, 'COMMA', 2, 'POINT')} : 'UGX 0.00'">UGX 0.00</td>
                             
                             <td>
                                 <form th:action="@{/billing/add-item}" method="POST" class="form-inline">
@@ -474,9 +477,20 @@
                             </td>
                             
                             <td>
-                                <form th:action="@{/billing/settle-tab}" method="POST" style="margin:0;">
+                                <form th:action="@{/billing/settle-tab}" method="POST" class="form-inline" style="margin:0;">
                                     <input type="hidden" name="tabId" th:value="${tab.id}" />
-                                    <button type="submit" class="btn-action">Settle Bill</button>
+                                    
+                                    <select name="paymentMethod" class="input-dark" 
+                                            th:id="'method-' + ${tab.id}" 
+                                            th:onchange="|togglePhoneField('${tab.id}')|" 
+                                            style="padding: 6px 10px; font-size: 13px;" required>
+                                        <option value="CASH">CASH</option>
+                                        <option value="MOBILE_MONEY">MOBILE MONEY</option>
+                                    </select>
+
+                                    <input type="text" name="customerPhone" th:id="'phone-' + ${tab.id}" class="input-dark" placeholder="07... (Momo)" style="display: none; width: 120px; padding: 6px 10px; font-size: 13px;" />
+                                    
+                                    <button type="submit" class="btn-action">Settle</button>
                                 </form>
                             </td>
                         </tr>
@@ -487,7 +501,7 @@
                 </table>
             </div>
 
-            <div class="content-card" sec:authorize="hasAnyRole('MANAGER', 'BOSS')" id="printable-ledger-area">
+            <div class="content-card" sec:authorize="hasAnyAuthority('ROLE_BOSS', 'BOSS', 'ROLE_MANAGER', 'MANAGER')" id="printable-ledger-area">
                 <div class="card-header">
                     <h3>Settled Operations History (Audit Ledger)</h3>
                     <button class="btn-print" onclick="executeIsolatedPrint()">
@@ -508,7 +522,7 @@
                         <tr th:each="tab : ${settledTabs}">
                             <td th:text="${tab.tabName}">Table reference</td>
                             <td><span style="background: rgba(16, 185, 129, 0.15); color: #10b981; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight:700;">SETTLED</span></td>
-                            <td th:text="'UGX ' + ${#numbers.formatDecimal(tab.totalAmount, 1, 'COMMA', 2, 'POINT')}">UGX 0.00</td>
+                            <td th:text="${tab.totalAmount != null} ? 'UGX ' + ${#numbers.formatDecimal(tab.totalAmount, 1, 'COMMA', 2, 'POINT')} : 'UGX 0.00'">UGX 0.00</td>
                             <td><code style="color: #a78bfa;" th:text="${tab.settledBy != null ? tab.settledBy : 'System'}">User</code></td>
                             <td th:text="${tab.settledAt != null ? #temporals.format(tab.settledAt, 'yyyy-MM-dd HH:mm:ss') : 'N/A'}">Date-Time</td>
                         </tr>
@@ -523,6 +537,22 @@
     </main>
 
     <script>
+        function togglePhoneField(tabId) {
+            const methodSelect = document.getElementById('method-' + tabId);
+            const phoneInput = document.getElementById('phone-' + tabId);
+            
+            if (methodSelect && phoneInput) {
+                if (methodSelect.value === 'MOBILE_MONEY') {
+                    phoneInput.style.display = 'inline-block';
+                    phoneInput.setAttribute('required', 'true');
+                } else {
+                    phoneInput.style.display = 'none';
+                    phoneInput.removeAttribute('required');
+                    phoneInput.value = '';
+                }
+            }
+        }
+
         function executeIsolatedPrint() {
             const printButton = document.querySelector('.btn-print');
             if (printButton) {

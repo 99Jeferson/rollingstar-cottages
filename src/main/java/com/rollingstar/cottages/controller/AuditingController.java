@@ -20,7 +20,6 @@ public class AuditingController {
     private final AuditLogRepository auditLogRepository;
     private final CottageRepository cottageRepository;
     
-    // Simple in-memory management for workers demo tracking (Replace with EmployeeRepository later)
     private static List<String> staffRegistry = new ArrayList<>(Arrays.asList("Manager Alice", "Bartender Juma", "Receptionist Grace"));
 
     public AuditingController(AuditLogRepository auditLogRepository, CottageRepository cottageRepository) {
@@ -37,15 +36,19 @@ public class AuditingController {
         List<Cottage> rooms = cottageRepository.findAll();
         long cottageDaily = 0;
         long cottageTotal = 0;
+        
         for (Cottage room : rooms) {
-            if (room.getGuest() != null) {
-                cottageDaily += room.getRate();
+            if (room.getRate() != null) {
+                // FIXED: Converted the BigDecimal value cleanly to longValue() for primitive addition calculations
+                if (room.getGuest() != null && !room.getGuest().trim().isEmpty()) {
+                    cottageDaily += room.getRate().longValue();
+                }
+                cottageTotal += (room.getRate().longValue() * 5); // Multiplier estimate baseline
             }
-            cottageTotal += (room.getRate() * 5); // Multiplier estimate baseline
         }
 
         // 3. Billing Engine Analytics (Drinks / Bar Point of Sale)
-        long billingDailyDrinks = 420000;  // Dynamically pull from your bar order receipts later
+        long billingDailyDrinks = 420000;  
         long billingTotalDrinks = 8900000;
 
         model.addAttribute("cottageDaily", cottageDaily);

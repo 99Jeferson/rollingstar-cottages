@@ -240,7 +240,7 @@
         </ul>
     </aside>
 
-    <main class="main-workspace">
+    <main class="main-workspace" id="dashboardWorkspace">
         
         <header class="top-navbar">
             <div class="navbar-title">
@@ -248,34 +248,36 @@
             </div>
             <div class="user-profile">
                 <span>Active Session: <strong sec:authentication="name">Administrator</strong></span>
+                <span style="font-size: 11px; color: #9ca3af; margin-left: 5px;" 
+                      sec:authentication="principal.authorities">[Role]</span>
             </div>
         </header>
 
-        <section class="dashboard-view">
+        <section class="dashboard-view" id="dashboardViewContainer">
             
             <div class="metrics-grid">
                 <div class="metric-card">
                     <span class="metric-title">Occupied Cottages</span>
                     <span class="metric-value" style="color: #10b981;">
-                        <span th:text="${occupiedCottages}">12</span> / 18
+                        <span th:text="${occupiedCottages != null ? occupiedCottages : 0}">12</span> / 18
                     </span>
                 </div>
                 <div class="metric-card accent-gold">
                     <span class="metric-title">Today's Transactions</span>
                     <span class="metric-value">
-                        UGX <span th:text="${#numbers.formatInteger(todayRevenue, 1, 'COMMA')}">450,000</span>
+                        UGX <span th:text="${#numbers.formatInteger(todayRevenue ?: 0, 1, 'COMMA')}">450,000</span>
                     </span>
                 </div>
                 <div class="metric-card">
                     <span class="metric-title">Active Staff Shifts</span>
                     <span class="metric-value" style="color: #a78bfa;">
-                        <span th:text="${activeStaffCount}">5</span> On Duty
+                        <span th:text="${activeStaffCount != null ? activeStaffCount : 0}">5</span> On Duty
                     </span>
                 </div>
                 <div class="metric-card accent-red">
                     <span class="metric-title">Low Stock Indicators</span>
                     <span class="metric-value">
-                        <span th:text="${lowStockAlerts}">3</span> Alerts
+                        <span th:text="${lowStockAlerts != null ? lowStockAlerts : 0}">3</span> Alerts
                     </span>
                 </div>
             </div>
@@ -297,7 +299,7 @@
                     <tbody>
                         <tr th:each="staff : ${activeStaffList}">
                             <td>#RS-<span th:text="${staff.id}">1001</span></td>
-                            <td class="fw-bold" th:text="${staff.fullName}">Brian Omondi</td>
+                            <td style="font-weight: 700;" th:text="${staff.fullName}">Brian Omondi</td>
                             <td th:text="${staff.departmentAssignment}">Main Lounge Area</td>
                             <td th:text="${staff.systemUserRole != null ? staff.systemUserRole : 'NONE'}">BARTENDER</td>
                             <td>
@@ -307,7 +309,7 @@
                             </td>
                         </tr>
                         <tr th:if="${#lists.isEmpty(activeStaffList)}">
-                            <td colspan="5" class="text-center text-muted py-4">No working staff allocations deployed onto the current shift database.</td>
+                            <td colspan="5" style="text-align: center; color: #9ca3af; padding: 30px;">No working staff allocations deployed onto the current shift database.</td>
                         </tr>
                     </tbody>
                 </table>
@@ -316,5 +318,24 @@
         </section>
     </main>
 
+    <script>
+        // 🔄 Live Dashboard Analytics Async Synchronization Loop
+        setInterval(() => {
+            fetch(window.location.href)
+                .then(response => response.text())
+                .then(html => {
+                    const parser = new DOMParser();
+                    const freshDoc = parser.parseFromString(html, 'text/html');
+                    
+                    const oldContainer = document.querySelector('#dashboardViewContainer');
+                    const freshContainer = freshDoc.querySelector('#dashboardViewContainer');
+                    
+                    if (oldContainer && freshContainer) {
+                        oldContainer.innerHTML = freshContainer.innerHTML;
+                    }
+                })
+                .catch(err => console.warn('Live monitoring pipeline temporarily delayed:', err));
+        }, 8000); // Polling rhythm matches cottages network updates perfectly
+    </script>
 </body>
 </html>
